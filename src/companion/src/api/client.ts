@@ -41,24 +41,56 @@ function readTokenFromPath(): string | null {
   return match ? match[1] : null
 }
 
+type PairingHint = { token: string; api: string | null }
+
+function parsePairingHint(rawUrl: string): PairingHint | null {
+  try {
+    const url = new URL(rawUrl, window.location.origin)
+    const query = url.searchParams
+    const fragment = new URLSearchParams(url.hash.replace(/^#/, ''))
+    const pathToken = url.pathname.match(/^\/p\/([A-Za-z0-9_-]+)(?:\/|$)/)?.[1] ?? null
+    const token = query.get('t') ?? fragment.get('t') ?? pathToken
+    if (!token) return null
+    return { token, api: query.get('api') ?? fragment.get('api') }
+  } catch {
+    return null
+  }
+}
+
+function applyPairingHint(hint: PairingHint): void {
+  setToken(hint.token)
+  if (hint.api) {
+    try {
+      const parsed = new URL(decodeURIComponent(hint.api))
+      setApiBase(parsed.origin)
+    } catch {
+      // ignore malformed api hint and keep same-origin fallback
+    }
+  }
+}
+
 /** Pull pairing token/API hint from URL params, preserving browser URL for iOS install handoff. */
 export function adoptTokenFromUrl(): void {
-  const token = readPairingParam('t') ?? readTokenFromPath()
+  const token = readPairingParam('t')
   const api = readPairingParam('api')
-  if (token) {
-    setToken(token)
-    if (api) {
-      try {
-        const parsed = new URL(decodeURIComponent(api))
-        setApiBase(parsed.origin)
-      } catch {
-        // ignore malformed api hint and keep same-origin fallback
-      }
-    }
+  const fromCurrentUrl =
+    token === null && api === null && readTokenFromPath() === null
+      ? null
+      : parsePairingHint(window.location.href)
+  if (fromCurrentUrl) {
+    applyPairingHint(fromCurrentUrl)
     // In Safari, keeping params lets Add-to-Home-Screen carry the pairing state.
     // The installed app then scrubs them on first standalone launch.
     if (isStandaloneMode()) history.replaceState(null, '', '/')
   }
+}
+
+/** Save pairing details from a scanned/pasted URL. */
+export function adoptTokenFromPairingUrl(rawUrl: string): boolean {
+  const hint = parsePairingHint(rawUrl)
+  if (!hint) return false
+  applyPairingHint(hint)
+  return true
 }
 
 let onUnauthorized: () => void = () => {}
