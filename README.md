@@ -255,8 +255,9 @@ docker compose up -d --build
 With `OSL_DMZ_PORT` set, the app serves a second listener that only exposes the
 DMZ API channel allowlist and blocks all static/UI routes. Keep `8420` LAN-only
 for the main screens, and port-forward only the DMZ API port.
-Most DMZ channels require a paired-device bearer token; only
-`companion:issueToken` remains open as the pairing bootstrap.
+Most DMZ channels require a paired-device bearer token. By default,
+`companion:issueToken` is also blocked on DMZ; set
+`OSL_DMZ_ALLOW_OPEN_PAIRING=1` only if you intentionally want remote bootstrap.
 For hardening and observability, the DMZ listener supports:
 
 - `OSL_DMZ_ALLOWED_ORIGINS` — comma-separated CORS allowlist
@@ -266,7 +267,7 @@ For hardening and observability, the DMZ listener supports:
 - structured security logs (`[dmz-security]`) for invalid origin, unauthorized,
   and rate-limited requests
 
-Phase 4 migration note: pairing QR links now include both token and API base
+Migration note: pairing QR links now include both token and API base
 in the URL fragment (`#t=...&api=...`), so existing companion installs can keep
 their local UI shell while syncing against the DMZ API when away from home.
 

@@ -24,7 +24,7 @@ function getApiBase(): string | null {
   return localStorage.getItem(API_BASE_KEY)
 }
 
-/** Pull a pairing token out of the QR URL fragment (#t=…), then scrub it. */
+/** Pull pairing token/API hint from the QR fragment (#t=...&api=...), then scrub it. */
 export function adoptTokenFromUrl(): void {
   const tokenMatch = window.location.hash.match(/[#&]t=([A-Za-z0-9_-]+)/)
   const apiMatch = window.location.hash.match(/[#&]api=([^&]+)/)
