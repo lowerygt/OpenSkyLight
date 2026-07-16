@@ -1,0 +1,21 @@
+services:
+  openskylight:
+    build: .
+    container_name: openskylight
+    ports:
+      - "8420:8420"
+      - "8421:8421" # optional DMZ API surface (no UI/static routes)
+    environment:
+      - PORT=8420
+      - OSL_DATA_DIR=/data
+      - OSL_DMZ_PORT=8421
+      - OSL_PAIR_BASE_URL=https://your-public-hostname.example.com
+      - OSL_DMZ_ALLOWED_ORIGINS=https://phone.example.com
+      - OSL_DMZ_RATE_LIMIT_PER_MIN=120
+      - OSL_DMZ_ALLOW_OPEN_PAIRING=0
+    volumes:
+      - openskylight-data:/data
+    restart: unless-stopped
+
+volumes:
+  openskylight-data:
