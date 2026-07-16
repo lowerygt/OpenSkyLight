@@ -168,6 +168,8 @@ npm install        # also rebuilds better-sqlite3 for Electron
 npm run dev        # windowed dev mode with hot reload
 npm run dev -- --kiosk   # fullscreen kiosk in dev
 npm run dev:companion    # companion web app with hot reload (proxies /api to a running kiosk)
+npm run dev:web          # web backend + web UI dev server (UI on :5173, API proxied)
+npm run start:web        # web backend only (serves built web app on :8420)
 npm test           # unit tests (run inside Electron's Node for the native module)
 npm run typecheck
 node scripts/e2e-smoke.mjs   # launches the built app and creates an event end-to-end

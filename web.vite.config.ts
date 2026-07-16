@@ -15,5 +15,10 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, 'out/web'),
     emptyOutDir: true
+  },
+  server: {
+    proxy: {
+      '/api': 'http://localhost:8420'
+    }
   }
 })
