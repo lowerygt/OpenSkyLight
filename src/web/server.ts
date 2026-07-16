@@ -116,6 +116,8 @@ export interface WebHttpServerDeps {
         rateLimitMax: number
         rateLimitWindowMs: number
         allowOpenPairing: boolean
+        serveCompanionUi: boolean
+        companionStaticRoot: string
         onSecurityEvent?: (event: {
             kind: 'invalid_origin' | 'rate_limited' | 'unauthorized';
             ip: string;
@@ -130,6 +132,8 @@ export function createWebHttpServer(deps: WebHttpServerDeps) {
     const dmzRateLimitMax = deps.dmz?.rateLimitMax ?? DEFAULT_DMZ_RATE_LIMIT_PER_MIN
     const dmzRateLimitWindowMs = deps.dmz?.rateLimitWindowMs ?? DEFAULT_DMZ_RATE_LIMIT_WINDOW_MS
     const dmzAllowOpenPairing = deps.dmz?.allowOpenPairing ?? false
+    const dmzServeCompanionUi = deps.dmz?.serveCompanionUi ?? false
+    const dmzCompanionStaticRoot = deps.dmz?.companionStaticRoot ?? deps.staticRoot
 
     function getIp(req: IncomingMessage): string {
         return req.socket.remoteAddress ?? 'unknown'
@@ -257,6 +261,10 @@ export function createWebHttpServer(deps: WebHttpServerDeps) {
             return
         }
         if (deps.surface === 'dmz') {
+            if (dmzServeCompanionUi) {
+                void serveStatic(dmzCompanionStaticRoot, res, url)
+                return
+            }
             res.writeHead(404).end('Not found')
             return
         }
@@ -269,6 +277,7 @@ export async function main(): Promise<void> {
     mkdirSync(dataDir, {recursive: true})
     const dbPath = process.env.OSL_DB_PATH ?? join(dataDir, 'openskylight.db')
     const staticRoot = resolve(process.env.OSL_WEB_ROOT ?? join(process.cwd(), 'out/web'))
+    const companionStaticRoot = resolve(process.env.OSL_DMZ_COMPANION_WEB_ROOT ?? join(process.cwd(), 'out/companion'))
     const port = Number(process.env.PORT ?? '8420')
     const dmzPort = Number(process.env.OSL_DMZ_PORT ?? '0')
     const dmzAllowedOrigins = (process.env.OSL_DMZ_ALLOWED_ORIGINS ?? '')
@@ -277,6 +286,7 @@ export async function main(): Promise<void> {
         .filter((o) => o.length > 0)
     const dmzRateLimitPerMin = Number(process.env.OSL_DMZ_RATE_LIMIT_PER_MIN ?? DEFAULT_DMZ_RATE_LIMIT_PER_MIN)
     const dmzAllowOpenPairing = process.env.OSL_DMZ_ALLOW_OPEN_PAIRING === '1'
+    const dmzServeCompanionUi = process.env.OSL_DMZ_SERVE_COMPANION_UI === '1'
 
     const {db} = openDatabase(dbPath)
     const deviceTz = (): string => DateTime.local().zoneName ?? 'UTC'
@@ -396,6 +406,8 @@ export async function main(): Promise<void> {
                 rateLimitMax: Number.isFinite(dmzRateLimitPerMin) && dmzRateLimitPerMin > 0 ? dmzRateLimitPerMin : 60,
                 rateLimitWindowMs: DEFAULT_DMZ_RATE_LIMIT_WINDOW_MS,
                 allowOpenPairing: dmzAllowOpenPairing,
+                serveCompanionUi: dmzServeCompanionUi,
+                companionStaticRoot,
                 onSecurityEvent: (event) =>
                     console.warn(`[dmz-security] ${event.kind} ip=${event.ip} path=${event.path}`)
             }

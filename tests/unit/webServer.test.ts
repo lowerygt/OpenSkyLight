@@ -153,6 +153,8 @@ describe('web server', () => {
                 rateLimitMax: 4,
                 rateLimitWindowMs: 60_000,
                 allowOpenPairing: true,
+                serveCompanionUi: false,
+                companionStaticRoot: staticRoot!,
                 onSecurityEvent: (e) => events.push(e.kind)
             }
         })
@@ -207,5 +209,41 @@ describe('web server', () => {
         expect(four.status).toBe(429)
         expect(events).toContain('invalid_origin')
         expect(events).toContain('rate_limited')
+    })
+
+    it('dmz can serve companion shell while keeping rpc dmz protections', async () => {
+        const {base} = await boot(undefined, 'dmz')
+        await new Promise<void>((resolve) => server?.close(() => resolve()))
+
+        const companionRoot = mkdtempSync(join(tmpdir(), 'osl-companion-'))
+        mkdirSync(join(companionRoot, 'assets'))
+        writeFileSync(join(companionRoot, 'index.html'), '<!doctype html><title>companion</title>')
+        writeFileSync(join(companionRoot, 'assets', 'app-hash.js'), 'console.log("companion")')
+
+        server = createWebHttpServer({
+            staticRoot: staticRoot!,
+            version: '0.0.0-test',
+            surface: 'dmz',
+            verifyToken: (token) => token === 'paired-device-token',
+            rpcDispatch: async () => ({ok: true, data: 'ok'}),
+            dmz: {
+                allowedOrigins: [],
+                rateLimitMax: 60,
+                rateLimitWindowMs: 60_000,
+                allowOpenPairing: false,
+                serveCompanionUi: true,
+                companionStaticRoot: companionRoot
+            }
+        })
+        await new Promise<void>((resolve) => server!.listen(Number(new URL(base).port), '127.0.0.1', resolve))
+
+        const root = await fetch(`${base}/`)
+        expect(root.status).toBe(200)
+        expect(await root.text()).toContain('<title>companion</title>')
+
+        const noAuth = await fetch(`${base}/api/rpc/lists:getAll`, {method: 'POST'})
+        expect(noAuth.status).toBe(401)
+
+        rmSync(companionRoot, {recursive: true, force: true})
     })
 })

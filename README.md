@@ -231,7 +231,7 @@ services:
     container_name: openskylight
     ports:
       - "8420:8420"
-      - "8421:8421" # optional DMZ API surface (no UI/static routes)
+      - "8421:8421" # optional DMZ companion+API surface
     environment:
       - PORT=8420
       - OSL_DATA_DIR=/data
@@ -241,6 +241,7 @@ services:
       - OSL_DMZ_ALLOWED_ORIGINS=https://phone.example.com
       - OSL_DMZ_RATE_LIMIT_PER_MIN=120
       - OSL_DMZ_ALLOW_OPEN_PAIRING=0
+      - OSL_DMZ_SERVE_COMPANION_UI=1
     volumes:
       - openskylight-data:/data
     restart: unless-stopped
@@ -253,9 +254,10 @@ volumes:
 docker compose up -d --build
 ```
 
-With `OSL_DMZ_PORT` set, the app serves a second listener that only exposes the
-DMZ API channel allowlist and blocks all static/UI routes. Keep `8420` LAN-only
-for the main screens, and port-forward only the DMZ API port.
+With `OSL_DMZ_PORT` set, the app serves a second listener for companion traffic.
+By default it is API-only; enable `OSL_DMZ_SERVE_COMPANION_UI=1` to serve the
+companion shell and companion API from the same domain/port. Keep `8420`
+LAN-only for the main screens, and port-forward only the DMZ listener port.
 Most DMZ channels require a paired-device bearer token. By default,
 `companion:issueToken` is also blocked on DMZ; set
 `OSL_DMZ_ALLOW_OPEN_PAIRING=1` only if you intentionally want remote bootstrap.
@@ -265,6 +267,10 @@ For hardening and observability, the DMZ listener supports:
 - `OSL_DMZ_RATE_LIMIT_PER_MIN` — per-IP request cap (default 120/min)
 - `OSL_DMZ_ALLOW_OPEN_PAIRING` — keep `0` to disable unauthenticated remote
   pairing bootstrap on DMZ (recommended)
+- `OSL_DMZ_SERVE_COMPANION_UI` — set `1` to host the companion shell on the DMZ
+  listener (same origin as `/api/rpc`)
+- `OSL_DMZ_COMPANION_WEB_ROOT` — optional companion bundle path (default
+  `out/companion`)
 - `OSL_PAIR_BASE_URL` — URL phones open for pairing/install (companion shell)
 - `OSL_PAIR_API_BASE_URL` — optional API origin written into QR (`#api=...`) for
   away-from-home sync; defaults to `OSL_PAIR_BASE_URL` when unset
@@ -274,6 +280,8 @@ For hardening and observability, the DMZ listener supports:
 Migration note: pairing QR links now include both token and API base
 in the URL fragment (`#t=...&api=...`), so existing companion installs can keep
 their local UI shell while syncing against the DMZ API when away from home.
+For same-origin companion hosting, set `OSL_PAIR_BASE_URL` to the DMZ companion
+URL and leave `OSL_PAIR_API_BASE_URL` unset.
 
 Then open `http://localhost:8420`.
 This mode uses the same renderer and SQLite-backed services, but desktop-only
