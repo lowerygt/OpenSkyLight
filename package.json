@@ -10,6 +10,7 @@
     "dev": "electron-vite dev",
     "dev:windowed": "electron-vite dev -- --windowed",
     "dev:companion": "vite --config companion.vite.config.ts",
+    "start": "vite",
     "build": "electron-vite build && npm run build:companion",
     "build:companion": "vite build --config companion.vite.config.ts",
     "preview": "electron-vite preview",
