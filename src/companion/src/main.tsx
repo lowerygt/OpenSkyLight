@@ -5,7 +5,7 @@ import { adoptTokenFromUrl } from './api/client'
 import App from './App'
 import './styles.css'
 
-// pairing QR fragment can carry token + API hint; stash them before first render
+// pairing URL can carry token + API hint; stash them before first render
 adoptTokenFromUrl()
 
 // the companion follows the phone's own theme (the kiosk follows the sun)

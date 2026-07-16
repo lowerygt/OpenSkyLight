@@ -24,21 +24,40 @@ function getApiBase(): string | null {
   return localStorage.getItem(API_BASE_KEY)
 }
 
-/** Pull pairing token/API hint from the QR fragment (#t=...&api=...), then scrub it. */
+function isStandaloneMode(): boolean {
+  return window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
+}
+
+function readPairingParam(name: string): string | null {
+  const query = new URLSearchParams(window.location.search)
+  const fromQuery = query.get(name)
+  if (fromQuery) return fromQuery
+  const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  return fragment.get(name)
+}
+
+function readTokenFromPath(): string | null {
+  const match = window.location.pathname.match(/^\/p\/([A-Za-z0-9_-]+)(?:\/|$)/)
+  return match ? match[1] : null
+}
+
+/** Pull pairing token/API hint from URL params, preserving browser URL for iOS install handoff. */
 export function adoptTokenFromUrl(): void {
-  const tokenMatch = window.location.hash.match(/[#&]t=([A-Za-z0-9_-]+)/)
-  const apiMatch = window.location.hash.match(/[#&]api=([^&]+)/)
-  if (tokenMatch) {
-    setToken(tokenMatch[1])
-    if (apiMatch) {
+  const token = readPairingParam('t') ?? readTokenFromPath()
+  const api = readPairingParam('api')
+  if (token) {
+    setToken(token)
+    if (api) {
       try {
-        const parsed = new URL(decodeURIComponent(apiMatch[1]))
+        const parsed = new URL(decodeURIComponent(api))
         setApiBase(parsed.origin)
       } catch {
         // ignore malformed api hint and keep same-origin fallback
       }
     }
-    history.replaceState(null, '', window.location.pathname)
+    // In Safari, keeping params lets Add-to-Home-Screen carry the pairing state.
+    // The installed app then scrubs them on first standalone launch.
+    if (isStandaloneMode()) history.replaceState(null, '', window.location.pathname)
   }
 }
 

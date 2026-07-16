@@ -234,10 +234,14 @@ describe('companionServer', () => {
     expect(res.status).toBe(401)
   })
 
-  it('issueToken includes token and api base in URL fragment', async () => {
+  it('issueToken includes token and api base in query and fragment', async () => {
     await boot()
     const issued = new URL(server!.issueToken().url)
+    const query = issued.searchParams
     const fragment = new URLSearchParams(issued.hash.replace(/^#/, ''))
+    expect(issued.pathname).toMatch(/^\/p\/[A-Za-z0-9_-]+$/)
+    expect(query.get('t')).toBeTruthy()
+    expect(query.get('api')).toBe(`${issued.origin}/`)
     expect(fragment.get('t')).toBeTruthy()
     expect(fragment.get('api')).toBe(`${issued.origin}/`)
   })

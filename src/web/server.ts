@@ -368,7 +368,8 @@ export async function main(): Promise<void> {
             }),
             issueToken: () => {
                 const token = tokens.issue()
-                return {url: `${pairShellBase}#t=${token}&api=${encodeURIComponent(pairApiBase)}`}
+                const params = `t=${token}&api=${encodeURIComponent(pairApiBase)}`
+                return {url: `${pairShellBase}p/${token}?${params}#${params}`}
             },
             unpairAll: () => tokens.revokeAll(),
             stop: () => undefined,

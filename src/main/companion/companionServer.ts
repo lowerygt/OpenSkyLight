@@ -241,13 +241,14 @@ export function createCompanionServer(deps: CompanionServerDeps) {
     }
   }
 
-  /** Mint a pairing URL — token rides in the fragment so it never reaches server logs. */
+  /** Mint a pairing URL with path/query/fragment token handoff for iOS reliability. */
   function issueToken(): { url: string } {
     const { port } = deps.settings.getAll().companion
     const token = deps.tokens.issue()
     const [best] = pickLanAddresses()
     const base = `http://${best ?? 'localhost'}:${boundPort ?? port}/`
-    return { url: `${base}#t=${token}&api=${encodeURIComponent(base)}` }
+    const params = `t=${token}&api=${encodeURIComponent(base)}`
+    return { url: `${base}p/${token}?${params}#${params}` }
   }
 
   function unpairAll(): void {
