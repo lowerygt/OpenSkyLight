@@ -4,6 +4,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DateTime } from 'luxon'
 import type { IpcChannel } from '@shared/ipc/contract'
+import { isChannelExposed, type ApiSurface } from '@shared/ipc/exposure'
 import { openDatabase } from '../main/db/client'
 import { createSettingsService } from '../main/services/settingsService'
 import { createPeopleService } from '../main/services/peopleService'
@@ -104,6 +105,7 @@ async function serveStatic(staticRoot: string, res: ServerResponse, urlPath: str
 export interface WebHttpServerDeps {
   staticRoot: string
   version: string
+  surface: ApiSurface
   rpcDispatch: (channel: IpcChannel, payload: unknown) => Promise<unknown>
 }
 
@@ -134,6 +136,10 @@ export function createWebHttpServer(deps: WebHttpServerDeps) {
           return
         }
         const channel = decodeURIComponent(rpcMatch[1]) as IpcChannel
+        if (!isChannelExposed(channel, deps.surface)) {
+          sendJson(res, 404, { ok: false, error: { code: 'NOT_FOUND', message: 'Unknown channel' } })
+          return
+        }
         const result = await deps.rpcDispatch(channel, payload)
         sendJson(res, 200, result)
       })()
@@ -147,6 +153,10 @@ export function createWebHttpServer(deps: WebHttpServerDeps) {
       res.writeHead(405).end()
       return
     }
+    if (deps.surface === 'dmz') {
+      res.writeHead(404).end('Not found')
+      return
+    }
     void serveStatic(deps.staticRoot, res, url)
   })
 }
@@ -157,6 +167,7 @@ export async function main(): Promise<void> {
   const dbPath = process.env.OSL_DB_PATH ?? join(dataDir, 'openskylight.db')
   const staticRoot = resolve(process.env.OSL_WEB_ROOT ?? join(process.cwd(), 'out/web'))
   const port = Number(process.env.PORT ?? '8420')
+  const dmzPort = Number(process.env.OSL_DMZ_PORT ?? '0')
 
   const { db } = openDatabase(dbPath)
   const deviceTz = (): string => DateTime.local().zoneName ?? 'UTC'
@@ -239,6 +250,7 @@ export async function main(): Promise<void> {
   const server = createWebHttpServer({
     staticRoot,
     version: process.env.npm_package_version ?? 'dev',
+    surface: 'lan',
     rpcDispatch: (channel, payload) => dispatch(services, table, channel, payload, { gate: 'pin', broadcast })
   })
 
@@ -246,6 +258,18 @@ export async function main(): Promise<void> {
     console.log(`[web] OpenSkyLight serving on http://0.0.0.0:${port}`)
     console.log(`[web] Database: ${dbPath}`)
   })
+
+  if (Number.isFinite(dmzPort) && dmzPort > 0) {
+    const dmzServer = createWebHttpServer({
+      staticRoot,
+      version: process.env.npm_package_version ?? 'dev',
+      surface: 'dmz',
+      rpcDispatch: (channel, payload) => dispatch(services, table, channel, payload, { gate: 'pin', broadcast })
+    })
+    dmzServer.listen(dmzPort, '0.0.0.0', () => {
+      console.log(`[web] DMZ API serving on http://0.0.0.0:${dmzPort} (no static UI)`)
+    })
+  }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

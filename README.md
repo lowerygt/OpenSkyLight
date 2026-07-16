@@ -231,9 +231,11 @@ services:
     container_name: openskylight
     ports:
       - "8420:8420"
+      - "8421:8421" # optional DMZ API surface (no UI/static routes)
     environment:
       - PORT=8420
       - OSL_DATA_DIR=/data
+      - OSL_DMZ_PORT=8421
     volumes:
       - openskylight-data:/data
     restart: unless-stopped
@@ -245,6 +247,10 @@ volumes:
 ```bash
 docker compose up -d --build
 ```
+
+With `OSL_DMZ_PORT` set, the app serves a second listener that only exposes the
+DMZ API channel allowlist and blocks all static/UI routes. Keep `8420` LAN-only
+for the main screens, and port-forward only the DMZ API port.
 
 Then open `http://localhost:8420`.
 This mode uses the same renderer and SQLite-backed services, but desktop-only

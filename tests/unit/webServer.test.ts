@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import type { Server } from 'node:http'
 import { createWebHttpServer } from '../../src/web/server'
 import type { IpcChannel } from '../../src/shared/ipc/contract'
+import type { ApiSurface } from '../../src/shared/ipc/exposure'
 
 describe('web server', () => {
   let server: Server | null = null
@@ -18,7 +19,8 @@ describe('web server', () => {
   })
 
   async function boot(
-    dispatchImpl?: (channel: IpcChannel, payload: unknown) => Promise<unknown>
+    dispatchImpl?: (channel: IpcChannel, payload: unknown) => Promise<unknown>,
+    surface: ApiSurface = 'lan'
   ): Promise<{ base: string; seen: { channel: IpcChannel; payload: unknown }[] }> {
     staticRoot = mkdtempSync(join(tmpdir(), 'osl-web-'))
     mkdirSync(join(staticRoot, 'assets'))
@@ -30,6 +32,7 @@ describe('web server', () => {
     server = createWebHttpServer({
       staticRoot,
       version: '0.0.0-test',
+      surface,
       rpcDispatch: async (channel, payload) => {
         seen.push({ channel, payload })
         if (dispatchImpl) return dispatchImpl(channel, payload)
@@ -102,5 +105,19 @@ describe('web server', () => {
 
     const sneaky = await fetch(`${base}/..%2f..%2fpackage.json`)
     expect([403, 404]).toContain(sneaky.status)
+  })
+
+  it('dmz surface blocks static UI and non-allowlisted channels', async () => {
+    const { base } = await boot(undefined, 'dmz')
+
+    const root = await fetch(`${base}/`)
+    expect(root.status).toBe(404)
+
+    const lanOnly = await fetch(`${base}/api/rpc/settings:getAll`, { method: 'POST' })
+    expect(lanOnly.status).toBe(404)
+
+    const allowed = await fetch(`${base}/api/rpc/lists:getAll`, { method: 'POST' })
+    expect(allowed.status).toBe(200)
+    expect(await allowed.json()).toEqual({ ok: true, data: 'ok' })
   })
 })
