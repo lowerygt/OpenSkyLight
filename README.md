@@ -177,6 +177,20 @@ npm run dist       # NSIS installer + portable exe (Windows)
 Production builds run fullscreen kiosk by default; pass `--windowed` to opt out.
 Data lives in SQLite at `%APPDATA%/openskylight/openskylight.db`.
 
+## Docker (web mode)
+
+Run OpenSkyLight as a browser app while keeping Electron available for desktop:
+
+```bash
+docker build -t openskylight-web .
+docker run --rm -p 8420:8420 -v openskylight-data:/data openskylight-web
+```
+
+Then open `http://localhost:8420`.
+This mode uses the same renderer and SQLite-backed services, but desktop-only
+features (native Google OAuth flow, RTSP camera streaming, screensaver folder picker,
+auto-update install, companion pairing) are unavailable in web mode.
+
 ## Architecture
 
 - **Electron + React 19 + TypeScript**, bundled with electron-vite

@@ -24,8 +24,10 @@
   },
   "include": [
     "electron.vite.config.ts",
+    "web.vite.config.ts",
     "vitest.config.ts",
     "src/main/**/*",
+    "src/web/**/*",
     "src/preload/**/*",
     "src/shared/**/*",
     "tests/**/*"
