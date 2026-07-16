@@ -1,6 +1,9 @@
 # OpenSkyLight
 
-An open-source, fully standalone family calendar display — a [Skylight Calendar](https://myskylight.com) alternative with no subscription, no cloud account, and no Home Assistant. One Electron app owns the whole touchscreen: calendar, family member color coding, Google sync, weather, chores, rewards, lists, meals, news, live cameras, and a photo screensaver.
+An open-source, fully standalone family calendar display — a [Skylight Calendar](https://myskylight.com) alternative
+with no subscription, no cloud account, and no Home Assistant. One Electron app owns the whole touchscreen: calendar,
+family member color coding, Google sync, weather, chores, rewards, lists, meals, news, live cameras, and a photo
+screensaver.
 
 ## What it looks like
 
@@ -15,18 +18,18 @@ swapped in):
 
 ![Home screen in dark mode](docs/screenshots/home-dark.png)
 
-| Week view with the meal strip | Touch-first event editor |
-| --- | --- |
+| Week view with the meal strip           | Touch-first event editor                     |
+|-----------------------------------------|----------------------------------------------|
 | ![Week view](docs/screenshots/week.png) | ![Event editor](docs/screenshots/editor.png) |
 
-| Month view | Chore board with star rewards | Family lists |
-| --- | --- | --- |
+| Month view                                | Chore board with star rewards          | Family lists                         |
+|-------------------------------------------|----------------------------------------|--------------------------------------|
 | ![Month view](docs/screenshots/month.png) | ![Chores](docs/screenshots/chores.png) | ![Lists](docs/screenshots/lists.png) |
 
 The phone companion app (pair by QR, served by the display itself — no cloud):
 
-| Lists on your phone | Chores on your phone |
-| --- | --- |
+| Lists on your phone                                      | Chores on your phone                                       |
+|----------------------------------------------------------|------------------------------------------------------------|
 | ![Companion lists](docs/screenshots/companion-lists.png) | ![Companion chores](docs/screenshots/companion-chores.png) |
 
 Every screenshot is generated from a clean install by `node scripts/shot-readme.mjs`,
@@ -100,31 +103,31 @@ which seeds demo data through the app's real IPC layer — so they stay honest.
 
 ### Feature implementation matrix
 
-| Feature | Electron app | Web / Docker |
-| --- | --- | --- |
-| Customizable Home screen | ✅ | ✅ |
-| Bird detections (BirdNET-Go) tile | ✅ | ✅ |
-| IP camera (RTSP) tiles | ✅ | ❌ |
-| Week / Day / Month / Agenda views | ✅ | ✅ |
-| Family member profiles + color filters | ✅ | ✅ |
-| Local calendars (create/edit/delete) | ✅ | ✅ |
-| Recurring events + this/following/all edits | ✅ | ✅ |
-| Two-way Google Calendar sync | ✅ | ❌ |
-| ICS feed subscriptions | ✅ | ❌ |
-| Weather header + forecast | ✅ | ✅ |
-| Parental PIN lock | ✅ | ✅ |
-| Chores & routines | ✅ | ✅ |
-| Star rewards | ✅ | ✅ |
-| Custom lists | ✅ | ✅ |
-| Phone companion app pairing + access | ✅ | ❌ |
-| Meal planning | ✅ | ✅ |
-| Photo screensaver | ✅ | ❌ |
-| Sleep schedule / display wake window | ✅ | ❌ |
-| Launch-on-startup / single-instance / crash auto-relaunch | ✅ | ❌ |
-| Built-in on-screen keyboard | ✅ | ✅ |
-| Warm visual design (Fraunces + Nunito theme) | ✅ | ✅ |
-| Dark mode that follows the sun | ✅ | ✅ |
-| Auto-update + quiet-hours install | ✅ | ❌ |
+| Feature                                                   | Electron app | Web / Docker |
+|-----------------------------------------------------------|--------------|--------------|
+| Customizable Home screen                                  | ✅            | ✅            |
+| Bird detections (BirdNET-Go) tile                         | ✅            | ✅            |
+| IP camera (RTSP) tiles                                    | ✅            | ❌            |
+| Week / Day / Month / Agenda views                         | ✅            | ✅            |
+| Family member profiles + color filters                    | ✅            | ✅            |
+| Local calendars (create/edit/delete)                      | ✅            | ✅            |
+| Recurring events + this/following/all edits               | ✅            | ✅            |
+| Two-way Google Calendar sync                              | ✅            | ❌            |
+| ICS feed subscriptions                                    | ✅            | ❌            |
+| Weather header + forecast                                 | ✅            | ✅            |
+| Parental PIN lock                                         | ✅            | ✅            |
+| Chores & routines                                         | ✅            | ✅            |
+| Star rewards                                              | ✅            | ✅            |
+| Custom lists                                              | ✅            | ✅            |
+| Phone companion app pairing + access                      | ✅            | ✅            |
+| Meal planning                                             | ✅            | ✅            |
+| Photo screensaver                                         | ✅            | ❌            |
+| Sleep schedule / display wake window                      | ✅            | ❌            |
+| Launch-on-startup / single-instance / crash auto-relaunch | ✅            | ❌            |
+| Built-in on-screen keyboard                               | ✅            | ✅            |
+| Warm visual design (Fraunces + Nunito theme)              | ✅            | ✅            |
+| Dark mode that follows the sun                            | ✅            | ✅            |
+| Auto-update + quiet-hours install                         | ✅            | ❌            |
 
 ### Companion app (phones)
 
@@ -236,8 +239,8 @@ services:
       - PORT=8420
       - OSL_DATA_DIR=/data
       - OSL_DMZ_PORT=8421
-      - OSL_PAIR_BASE_URL=http://192.168.1.50:8420
-      - OSL_PAIR_API_BASE_URL=https://your-public-hostname.example.com
+      - OSL_PAIR_BASE_URL=https://your-public-hostname.example.com
+      # - OSL_PAIR_API_BASE_URL=https://your-public-hostname.example.com
       - OSL_DMZ_ALLOWED_ORIGINS=https://phone.example.com
       - OSL_DMZ_RATE_LIMIT_PER_MIN=120
       - OSL_DMZ_ALLOW_OPEN_PAIRING=0
@@ -254,34 +257,47 @@ volumes:
 docker compose up -d --build
 ```
 
-With `OSL_DMZ_PORT` set, the app serves a second listener for companion traffic.
-By default it is API-only; enable `OSL_DMZ_SERVE_COMPANION_UI=1` to serve the
-companion shell and companion API from the same domain/port. Keep `8420`
-LAN-only for the main screens, and port-forward only the DMZ listener port.
-Most DMZ channels require a paired-device bearer token. By default,
-`companion:issueToken` is also blocked on DMZ; set
-`OSL_DMZ_ALLOW_OPEN_PAIRING=1` only if you intentionally want remote bootstrap.
-For hardening and observability, the DMZ listener supports:
+### Docker networking model
 
-- `OSL_DMZ_ALLOWED_ORIGINS` — comma-separated CORS allowlist
-- `OSL_DMZ_RATE_LIMIT_PER_MIN` — per-IP request cap (default 120/min)
-- `OSL_DMZ_ALLOW_OPEN_PAIRING` — keep `0` to disable unauthenticated remote
-  pairing bootstrap on DMZ (recommended)
-- `OSL_DMZ_SERVE_COMPANION_UI` — set `1` to host the companion shell on the DMZ
-  listener (same origin as `/api/rpc`)
-- `OSL_DMZ_COMPANION_WEB_ROOT` — optional companion bundle path (default
-  `out/companion`)
-- `OSL_PAIR_BASE_URL` — URL phones open for pairing/install (companion shell)
-- `OSL_PAIR_API_BASE_URL` — optional API origin written into QR (`#api=...`) for
-  away-from-home sync; defaults to `OSL_PAIR_BASE_URL` when unset
-- structured security logs (`[dmz-security]`) for invalid origin, unauthorized,
-  and rate-limited requests
+- `PORT` (default `8420`) serves the main OpenSkyLight web UI.
+- `OSL_DMZ_PORT` (optional) starts a second listener intended for companion traffic.
+- Keep `8420` LAN-only. Only publish/forward the DMZ port if you need remote phone access.
 
-Companion pairing flow: first scan opens the companion install page in Safari.
-After adding to Home Screen, open the installed app and scan the kiosk QR again
-inside the app's built-in scanner to store token/API in app-local storage.
-For same-origin companion hosting, set `OSL_PAIR_BASE_URL` to the DMZ companion
-URL and leave `OSL_PAIR_API_BASE_URL` unset.
+### Recommended deployments
+
+1. **LAN-only kiosk UI + remote companion on one public port (most common)**
+    - Keep `PORT=8420` internal/LAN.
+    - Set `OSL_DMZ_PORT=8421` and publish `8421`.
+    - Set `OSL_DMZ_SERVE_COMPANION_UI=1` so `/` and `/api/rpc` for companion share the same origin.
+    - Set `OSL_PAIR_BASE_URL` to that public companion URL (for QR links).
+    - Keep `OSL_DMZ_ALLOW_OPEN_PAIRING=0` for locked-down remote bootstrap.
+2. **LAN-only (no remote companion)**
+    - Omit `OSL_DMZ_PORT`.
+    - Set `OSL_PAIR_BASE_URL` to your LAN URL (for example `http://192.168.1.50:8420`).
+
+### Environment variables (web/docker runtime)
+
+| Variable                     | Default                           | Purpose                                                   |
+|------------------------------|-----------------------------------|-----------------------------------------------------------|
+| `PORT`                       | `8420`                            | Main web listener (kiosk UI + API on LAN)                 |
+| `OSL_DATA_DIR`               | `./data`                          | Directory for persistent runtime data                     |
+| `OSL_DB_PATH`                | `${OSL_DATA_DIR}/openskylight.db` | Explicit SQLite file path                                 |
+| `OSL_WEB_ROOT`               | `out/web`                         | Built kiosk web bundle path                               |
+| `OSL_DMZ_PORT`               | unset                             | Optional DMZ listener port                                |
+| `OSL_DMZ_SERVE_COMPANION_UI` | `0`                               | `1` = serve companion shell on DMZ listener               |
+| `OSL_DMZ_COMPANION_WEB_ROOT` | `out/companion`                   | Companion bundle path for DMZ UI serving                  |
+| `OSL_DMZ_ALLOWED_ORIGINS`    | unset                             | Comma-separated CORS allowlist for DMZ RPC                |
+| `OSL_DMZ_RATE_LIMIT_PER_MIN` | `120`                             | Per-IP DMZ request cap                                    |
+| `OSL_DMZ_ALLOW_OPEN_PAIRING` | `0`                               | `1` = allow unauthenticated `companion:issueToken` on DMZ |
+| `OSL_PAIR_BASE_URL`          | `http://localhost:<PORT>/`        | URL encoded into pairing QR (what phones open first)      |
+| `OSL_PAIR_API_BASE_URL`      | same as `OSL_PAIR_BASE_URL`       | Optional API origin hint for companion RPC                |
+
+DMZ hardening/visibility includes CORS gating, rate limiting, token auth for DMZ
+channels, and structured security logs (`[dmz-security]`).
+
+Companion pairing flow: first scan opens the install page in Safari. After
+adding to Home Screen, open the installed app and scan the kiosk QR again in
+the app's built-in scanner to store token/API in app-local storage.
 
 Then open `http://localhost:8420`.
 This mode uses the same renderer and SQLite-backed services, but desktop-only
