@@ -137,4 +137,62 @@ describe('web server', () => {
     const issue = await fetch(`${base}/api/rpc/companion:issueToken`, { method: 'POST' })
     expect(issue.status).toBe(200)
   })
+
+  it('dmz enforces origin allowlist and per-ip rate limits', async () => {
+    const events: string[] = []
+    const { base } = await boot(async () => ({ ok: true, data: 'ok' }), 'dmz')
+    await new Promise<void>((resolve) => server?.close(() => resolve()))
+    server = createWebHttpServer({
+      staticRoot: staticRoot!,
+      version: '0.0.0-test',
+      surface: 'dmz',
+      verifyToken: (token) => token === 'paired-device-token',
+      rpcDispatch: async () => ({ ok: true, data: 'ok' }),
+      dmz: {
+        allowedOrigins: ['https://phone.example.com'],
+        rateLimitMax: 2,
+        rateLimitWindowMs: 60_000,
+        onSecurityEvent: (e) => events.push(e.kind)
+      }
+    })
+    await new Promise<void>((resolve) => server!.listen(Number(new URL(base).port), '127.0.0.1', resolve))
+
+    const badOrigin = await fetch(`${base}/api/rpc/lists:getAll`, {
+      method: 'POST',
+      headers: { Origin: 'https://evil.example.com', Authorization: 'Bearer paired-device-token' }
+    })
+    expect(badOrigin.status).toBe(403)
+
+    const preflight = await fetch(`${base}/api/rpc/lists:getAll`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://phone.example.com',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'Authorization, Content-Type'
+      }
+    })
+    expect(preflight.status).toBe(204)
+    expect(preflight.headers.get('access-control-allow-origin')).toBe('https://phone.example.com')
+
+    const one = await fetch(`${base}/api/rpc/lists:getAll`, {
+      method: 'POST',
+      headers: { Origin: 'https://phone.example.com', Authorization: 'Bearer paired-device-token' }
+    })
+    expect(one.status).toBe(200)
+    expect(one.headers.get('x-frame-options')).toBe('DENY')
+
+    const two = await fetch(`${base}/api/rpc/lists:getAll`, {
+      method: 'POST',
+      headers: { Origin: 'https://phone.example.com', Authorization: 'Bearer paired-device-token' }
+    })
+    expect(two.status).toBe(200)
+
+    const three = await fetch(`${base}/api/rpc/lists:getAll`, {
+      method: 'POST',
+      headers: { Origin: 'https://phone.example.com', Authorization: 'Bearer paired-device-token' }
+    })
+    expect(three.status).toBe(429)
+    expect(events).toContain('invalid_origin')
+    expect(events).toContain('rate_limited')
+  })
 })

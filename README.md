@@ -237,6 +237,8 @@ services:
       - OSL_DATA_DIR=/data
       - OSL_DMZ_PORT=8421
       - OSL_PAIR_BASE_URL=https://your-public-hostname.example.com
+      - OSL_DMZ_ALLOWED_ORIGINS=https://phone.example.com
+      - OSL_DMZ_RATE_LIMIT_PER_MIN=120
     volumes:
       - openskylight-data:/data
     restart: unless-stopped
@@ -254,6 +256,12 @@ DMZ API channel allowlist and blocks all static/UI routes. Keep `8420` LAN-only
 for the main screens, and port-forward only the DMZ API port.
 Most DMZ channels require a paired-device bearer token; only
 `companion:issueToken` remains open as the pairing bootstrap.
+For hardening and observability, the DMZ listener supports:
+
+- `OSL_DMZ_ALLOWED_ORIGINS` — comma-separated CORS allowlist
+- `OSL_DMZ_RATE_LIMIT_PER_MIN` — per-IP request cap (default 120/min)
+- structured security logs (`[dmz-security]`) for invalid origin, unauthorized,
+  and rate-limited requests
 
 Then open `http://localhost:8420`.
 This mode uses the same renderer and SQLite-backed services, but desktop-only
