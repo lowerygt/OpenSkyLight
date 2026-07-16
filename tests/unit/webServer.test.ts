@@ -25,6 +25,10 @@ describe('web server', () => {
         staticRoot = mkdtempSync(join(tmpdir(), 'osl-web-'))
         mkdirSync(join(staticRoot, 'assets'))
         writeFileSync(join(staticRoot, 'index.html'), '<!doctype html><title>web</title>')
+        writeFileSync(
+            join(staticRoot, 'manifest.webmanifest'),
+            JSON.stringify({name: 'OpenSkyLight', start_url: '/', display: 'standalone'})
+        )
         writeFileSync(join(staticRoot, 'assets', 'app-abc123.js'), 'console.log(1)')
         writeFileSync(join(staticRoot, 'favicon.svg'), '<svg xmlns="http://www.w3.org/2000/svg"></svg>')
 
@@ -218,6 +222,10 @@ describe('web server', () => {
         const companionRoot = mkdtempSync(join(tmpdir(), 'osl-companion-'))
         mkdirSync(join(companionRoot, 'assets'))
         writeFileSync(join(companionRoot, 'index.html'), '<!doctype html><title>companion</title>')
+        writeFileSync(
+            join(companionRoot, 'manifest.webmanifest'),
+            JSON.stringify({name: 'OpenSkyLight', start_url: '/', display: 'standalone'})
+        )
         writeFileSync(join(companionRoot, 'assets', 'app-hash.js'), 'console.log("companion")')
 
         server = createWebHttpServer({
@@ -240,6 +248,12 @@ describe('web server', () => {
         const root = await fetch(`${base}/`)
         expect(root.status).toBe(200)
         expect(await root.text()).toContain('<title>companion</title>')
+
+        const referer = `${base}/p/abc123?t=abc123&api=${encodeURIComponent(`${base}/`)}`
+        const manifestRes = await fetch(`${base}/manifest.webmanifest`, {headers: {Referer: referer}})
+        expect(manifestRes.status).toBe(200)
+        const manifest = (await manifestRes.json()) as {start_url: string}
+        expect(manifest.start_url).toBe(`/p/abc123?api=${encodeURIComponent(`${base}/`)}`)
 
         const noAuth = await fetch(`${base}/api/rpc/lists:getAll`, {method: 'POST'})
         expect(noAuth.status).toBe(401)

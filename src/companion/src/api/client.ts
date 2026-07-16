@@ -57,7 +57,7 @@ export function adoptTokenFromUrl(): void {
     }
     // In Safari, keeping params lets Add-to-Home-Screen carry the pairing state.
     // The installed app then scrubs them on first standalone launch.
-    if (isStandaloneMode()) history.replaceState(null, '', window.location.pathname)
+    if (isStandaloneMode()) history.replaceState(null, '', '/')
   }
 }
 

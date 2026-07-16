@@ -281,6 +281,8 @@ Migration note: pairing QR links now include token/API handoff in path + URL
 params (`/p/<token>?t=...&api=...#t=...&api=...`) so iOS Home Screen installs
 retain pairing state while existing companion installs keep syncing against the
 DMZ API when away from home.
+The manifest is served dynamically with a tokenized `start_url` when opened
+from a pairing URL so iOS "Open as Web App" launches retain the pairing state.
 For same-origin companion hosting, set `OSL_PAIR_BASE_URL` to the DMZ companion
 URL and leave `OSL_PAIR_API_BASE_URL` unset.
 
