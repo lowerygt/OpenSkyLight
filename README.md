@@ -277,12 +277,9 @@ For hardening and observability, the DMZ listener supports:
 - structured security logs (`[dmz-security]`) for invalid origin, unauthorized,
   and rate-limited requests
 
-Migration note: pairing QR links now include token/API handoff in path + URL
-params (`/p/<token>?t=...&api=...#t=...&api=...`) so iOS Home Screen installs
-retain pairing state while existing companion installs keep syncing against the
-DMZ API when away from home.
-The manifest is served dynamically with a tokenized `start_url` when opened
-from a pairing URL so iOS "Open as Web App" launches retain the pairing state.
+Companion pairing flow: first scan opens the companion install page in Safari.
+After adding to Home Screen, open the installed app and scan the kiosk QR again
+inside the app's built-in scanner to store token/API in app-local storage.
 For same-origin companion hosting, set `OSL_PAIR_BASE_URL` to the DMZ companion
 URL and leave `OSL_PAIR_API_BASE_URL` unset.
 

@@ -167,7 +167,7 @@ export type IpcContract = {
     req: void
     res: { running: boolean; port: number; urls: string[]; pairedCount: number; lastError: string | null }
   }
-  /** Mints a fresh pairing token (parent-gated) encoded in pairing URL params. */
+  /** Mints a fresh pairing token (parent-gated) encoded in the pairing URL. */
   'companion:issueToken': { req: void; res: { url: string } }
   'companion:unpairAll': { req: void; res: void }
 

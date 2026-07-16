@@ -1,14 +1,13 @@
 import { useRef, useState } from 'react'
 import BarcodeScanner from 'react-qr-barcode-scanner'
 import { BarcodeStringFormat } from 'react-qr-barcode-scanner'
-import { GhostButton, PrimaryButton, TextInput } from '../components/ui'
+import { GhostButton, PrimaryButton } from '../components/ui'
 import { adoptTokenFromPairingUrl } from '../api/client'
 
-export function PairScreen({ onRetry }: { onRetry: () => void }) {
+export function PairScreen({ onPaired }: { onPaired: () => void }) {
   const [showScanner, setShowScanner] = useState(false)
   const [stopStream, setStopStream] = useState(false)
   const [scannerError, setScannerError] = useState<string | null>(null)
-  const [manualUrl, setManualUrl] = useState('')
   const resolvedRef = useRef(false)
 
   async function startScanner(): Promise<void> {
@@ -26,14 +25,6 @@ export function PairScreen({ onRetry }: { onRetry: () => void }) {
     }, 0)
   }
 
-  function submitManualLink(): void {
-    if (adoptTokenFromPairingUrl(manualUrl.trim())) {
-      onRetry()
-      return
-    }
-    setScannerError('That link does not look like a valid pairing QR URL.')
-  }
-
   return (
     <div className="flex h-full flex-col items-center justify-center gap-5 px-8 text-center">
       <img src="/icon-192.png" alt="" className="h-20 w-20 rounded-3xl shadow-card" />
@@ -47,7 +38,7 @@ export function PairScreen({ onRetry }: { onRetry: () => void }) {
           Under <span className="font-extrabold">Companion app</span>, tap{' '}
           <span className="font-extrabold">Pair a phone</span>
         </li>
-        <li>Scan the QR code with this phone's camera</li>
+        <li>Scan the QR code again in this app</li>
       </ol>
       {showScanner ? (
         <div className="flex w-full max-w-xs flex-col gap-3">
@@ -61,8 +52,8 @@ export function PairScreen({ onRetry }: { onRetry: () => void }) {
               onError={(err) => {
                 setScannerError(
                   err instanceof DOMException && err.name === 'NotAllowedError'
-                    ? 'Camera access was denied. Allow camera permission or paste the pairing link below.'
-                    : 'Could not access camera. Allow camera permission or paste the pairing link below.'
+                    ? 'Camera access was denied. Allow camera permission and try again.'
+                    : 'Could not access camera. Allow camera permission and try again.'
                 )
                 closeScanner()
               }}
@@ -72,7 +63,7 @@ export function PairScreen({ onRetry }: { onRetry: () => void }) {
                 if (!raw || !adoptTokenFromPairingUrl(raw)) return
                 resolvedRef.current = true
                 closeScanner()
-                onRetry()
+                onPaired()
               }}
             />
           </div>
@@ -87,12 +78,7 @@ export function PairScreen({ onRetry }: { onRetry: () => void }) {
       ) : (
         <PrimaryButton onClick={() => void startScanner()}>Scan QR with camera</PrimaryButton>
       )}
-      <div className="flex w-full max-w-xs flex-col gap-2">
-        <TextInput value={manualUrl} onChange={setManualUrl} placeholder="Paste pairing link" />
-        <GhostButton onClick={submitManualLink}>Use pasted link</GhostButton>
-      </div>
       {scannerError ? <p className="max-w-xs text-sm font-semibold text-red-600">{scannerError}</p> : null}
-      <GhostButton onClick={onRetry}>I've scanned it — retry</GhostButton>
     </div>
   )
 }

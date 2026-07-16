@@ -69,23 +69,6 @@ export function createCompanionServer(deps: CompanionServerDeps) {
     res.end(payload)
   }
 
-  function parsePairingHint(rawUrl: string): { token: string | null; api: string | null } {
-    const parsed = new URL(rawUrl, 'http://localhost')
-    const pathTokenMatch = parsed.pathname.match(/^\/p\/([A-Za-z0-9_-]+)(?:\/|$)/)
-    return {
-      token: parsed.searchParams.get('t') ?? (pathTokenMatch ? pathTokenMatch[1] : null),
-      api: parsed.searchParams.get('api')
-    }
-  }
-
-  function pairingHintFromRequest(req: IncomingMessage): { token: string | null; api: string | null } {
-    const direct = parsePairingHint(req.url ?? '/')
-    if (direct.token) return direct
-    const ref = req.headers.referer
-    if (typeof ref !== 'string') return direct
-    return parsePairingHint(ref)
-  }
-
   function readBody(req: IncomingMessage): Promise<string | null> {
     return new Promise((resolve) => {
       let size = 0
@@ -180,22 +163,6 @@ export function createCompanionServer(deps: CompanionServerDeps) {
     res.end(data)
   }
 
-  async function serveManifest(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    try {
-      const raw = await fs.readFile(join(deps.staticRoot, 'manifest.webmanifest'), 'utf8')
-      const manifest = JSON.parse(raw) as Record<string, unknown>
-      const { token, api } = pairingHintFromRequest(req)
-      if (token) {
-        const apiPart = api ? `?api=${encodeURIComponent(api)}` : ''
-        manifest.start_url = `/p/${token}${apiPart}`
-      }
-      res.writeHead(200, { 'Content-Type': 'application/manifest+json', 'Cache-Control': 'no-store' })
-      res.end(JSON.stringify(manifest))
-    } catch {
-      res.writeHead(404).end('Not found')
-    }
-  }
-
   function onRequest(req: IncomingMessage, res: ServerResponse): void {
     const url = req.url ?? '/'
     if (url === '/api/health' && req.method === 'GET') {
@@ -213,10 +180,6 @@ export function createCompanionServer(deps: CompanionServerDeps) {
     }
     if (url.startsWith('/api/')) {
       sendJson(res, 404, { ok: false, error: { code: 'NOT_FOUND', message: 'Unknown endpoint' } })
-      return
-    }
-    if (url.startsWith('/manifest.webmanifest') && req.method === 'GET') {
-      void serveManifest(req, res)
       return
     }
     if (req.method !== 'GET') {
@@ -278,14 +241,13 @@ export function createCompanionServer(deps: CompanionServerDeps) {
     }
   }
 
-  /** Mint a pairing URL with path/query/fragment token handoff for iOS reliability. */
+  /** Mint a pairing URL — token rides in the fragment so it never reaches server logs. */
   function issueToken(): { url: string } {
     const { port } = deps.settings.getAll().companion
     const token = deps.tokens.issue()
     const [best] = pickLanAddresses()
     const base = `http://${best ?? 'localhost'}:${boundPort ?? port}/`
-    const params = `t=${token}&api=${encodeURIComponent(base)}`
-    return { url: `${base}p/${token}?${params}#${params}` }
+    return { url: `${base}#t=${token}&api=${encodeURIComponent(base)}` }
   }
 
   function unpairAll(): void {

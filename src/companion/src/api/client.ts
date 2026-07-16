@@ -24,23 +24,6 @@ function getApiBase(): string | null {
   return localStorage.getItem(API_BASE_KEY)
 }
 
-function isStandaloneMode(): boolean {
-  return window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
-}
-
-function readPairingParam(name: string): string | null {
-  const query = new URLSearchParams(window.location.search)
-  const fromQuery = query.get(name)
-  if (fromQuery) return fromQuery
-  const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''))
-  return fragment.get(name)
-}
-
-function readTokenFromPath(): string | null {
-  const match = window.location.pathname.match(/^\/p\/([A-Za-z0-9_-]+)(?:\/|$)/)
-  return match ? match[1] : null
-}
-
 type PairingHint = { token: string; api: string | null }
 
 function parsePairingHint(rawUrl: string): PairingHint | null {
@@ -66,22 +49,6 @@ function applyPairingHint(hint: PairingHint): void {
     } catch {
       // ignore malformed api hint and keep same-origin fallback
     }
-  }
-}
-
-/** Pull pairing token/API hint from URL params, preserving browser URL for iOS install handoff. */
-export function adoptTokenFromUrl(): void {
-  const token = readPairingParam('t')
-  const api = readPairingParam('api')
-  const fromCurrentUrl =
-    token === null && api === null && readTokenFromPath() === null
-      ? null
-      : parsePairingHint(window.location.href)
-  if (fromCurrentUrl) {
-    applyPairingHint(fromCurrentUrl)
-    // In Safari, keeping params lets Add-to-Home-Screen carry the pairing state.
-    // The installed app then scrubs them on first standalone launch.
-    if (isStandaloneMode()) history.replaceState(null, '', '/')
   }
 }
 

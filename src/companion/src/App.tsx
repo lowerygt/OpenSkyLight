@@ -6,6 +6,7 @@ import { MealsPage } from './pages/MealsPage'
 import { ChoresPage } from './pages/ChoresPage'
 import { AgendaPage } from './pages/AgendaPage'
 import { PairScreen } from './pages/PairScreen'
+import { InstallScreen } from './pages/InstallScreen'
 
 type TabId = 'lists' | 'meals' | 'chores' | 'agenda'
 
@@ -17,6 +18,11 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 ]
 
 export default function App() {
+  const detectStandalone = (): boolean =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+
+  const [standalone, setStandalone] = useState(detectStandalone)
   const [paired, setPaired] = useState(() => getToken() !== null)
   const [tab, setTab] = useState<TabId>('lists')
 
@@ -25,7 +31,8 @@ export default function App() {
     setUnauthorizedHandler(() => setPaired(false))
   }, [])
 
-  if (!paired) return <PairScreen onRetry={() => setPaired(getToken() !== null)} />
+  if (!standalone) return <InstallScreen onRefresh={() => setStandalone(detectStandalone())} />
+  if (!paired) return <PairScreen onPaired={() => setPaired(getToken() !== null)} />
 
   return (
     <div className="flex h-full flex-col">

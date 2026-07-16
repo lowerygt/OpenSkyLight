@@ -124,10 +124,6 @@ describe('companionServer', () => {
     async function boot(dispatchImpl?: (channel: string, payload: unknown) => Promise<IpcResult<unknown>>) {
         staticRoot = mkdtempSync(join(tmpdir(), 'osl-companion-'))
         writeFileSync(join(staticRoot, 'index.html'), '<!doctype html><title>companion</title>')
-        writeFileSync(
-            join(staticRoot, 'manifest.webmanifest'),
-            JSON.stringify({name: 'OpenSkyLight', start_url: '/', display: 'standalone'})
-        )
         mkdirSync(join(staticRoot, 'assets'))
         writeFileSync(join(staticRoot, 'assets', 'app-abc123.js'), 'console.log(1)')
         const settings = settingsStub({enabled: true, port: 0}) // port 0 = OS-assigned
@@ -215,15 +211,6 @@ describe('companionServer', () => {
         expect([403, 404]).toContain(sneaky.status)
     })
 
-    it('derives web app start_url from pairing context for home-screen installs', async () => {
-        const {base} = await boot()
-        const referer = `${base}/p/abc123?t=abc123&api=${encodeURIComponent(`${base}/`)}`
-        const res = await fetch(`${base}/manifest.webmanifest`, {headers: {Referer: referer}})
-        expect(res.status).toBe(200)
-        const manifest = (await res.json()) as {start_url: string}
-        expect(manifest.start_url).toBe(`/p/abc123?api=${encodeURIComponent(`${base}/`)}`)
-    })
-
     it('rate limits repeated auth failures per IP', async () => {
         const {base} = await boot()
         let lastStatus = 0
@@ -247,14 +234,10 @@ describe('companionServer', () => {
     expect(res.status).toBe(401)
   })
 
-  it('issueToken includes token and api base in query and fragment', async () => {
+  it('issueToken includes token and api base in fragment', async () => {
     await boot()
     const issued = new URL(server!.issueToken().url)
-    const query = issued.searchParams
     const fragment = new URLSearchParams(issued.hash.replace(/^#/, ''))
-    expect(issued.pathname).toMatch(/^\/p\/[A-Za-z0-9_-]+$/)
-    expect(query.get('t')).toBeTruthy()
-    expect(query.get('api')).toBe(`${issued.origin}/`)
     expect(fragment.get('t')).toBeTruthy()
     expect(fragment.get('api')).toBe(`${issued.origin}/`)
   })
