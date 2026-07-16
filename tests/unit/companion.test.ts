@@ -128,18 +128,19 @@ describe('companionServer', () => {
         writeFileSync(join(staticRoot, 'assets', 'app-abc123.js'), 'console.log(1)')
         const settings = settingsStub({enabled: true, port: 0}) // port 0 = OS-assigned
         const tokens = createCompanionTokens(settings)
-        server = createCompanionServer({
+    server = createCompanionServer({
             settings,
             tokens,
             dispatch: dispatchImpl ?? (async () => ({ok: true, data: 'dispatched'})),
             version: '0.0.0-test',
             staticRoot
-        })
-        server.applySettings()
-        // wait for listen
-        for (let i = 0; i < 100 && !server.getStatus().running; i++) await new Promise((r) => setTimeout(r, 10))
-        const token = server.issueToken().url.split('#t=')[1]
-        const status = server.getStatus()
+    })
+    server.applySettings()
+    // wait for listen
+    for (let i = 0; i < 100 && !server.getStatus().running; i++) await new Promise((r) => setTimeout(r, 10))
+    const issued = new URL(server.issueToken().url)
+    const token = new URLSearchParams(issued.hash.replace(/^#/, '')).get('t') ?? ''
+    const status = server.getStatus()
         // port 0 was requested; recover the bound port from the issued URL
         const port = Number(new URL(server.issueToken().url).port)
         expect(status.running).toBe(true)
@@ -223,13 +224,21 @@ describe('companionServer', () => {
         expect(lastStatus).toBe(429)
     })
 
-    it('unpairAll revokes access', async () => {
+  it('unpairAll revokes access', async () => {
         const {base, token} = await boot()
         server!.unpairAll()
         const res = await fetch(`${base}/api/rpc/lists:getAll`, {
             method: 'POST',
             headers: {Authorization: `Bearer ${token}`}
-        })
-        expect(res.status).toBe(401)
     })
+    expect(res.status).toBe(401)
+  })
+
+  it('issueToken includes token and api base in URL fragment', async () => {
+    await boot()
+    const issued = new URL(server!.issueToken().url)
+    const fragment = new URLSearchParams(issued.hash.replace(/^#/, ''))
+    expect(fragment.get('t')).toBeTruthy()
+    expect(fragment.get('api')).toBe(`${issued.origin}/`)
+  })
 })

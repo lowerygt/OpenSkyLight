@@ -1,6 +1,7 @@
 import type { IpcChannel, IpcContract, IpcResult } from '@shared/ipc/contract'
 
 const TOKEN_KEY = 'osl.companionToken'
+const API_BASE_KEY = 'osl.companionApiBase'
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
@@ -12,13 +13,31 @@ export function setToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(API_BASE_KEY)
+}
+
+function setApiBase(url: string): void {
+  localStorage.setItem(API_BASE_KEY, url)
+}
+
+function getApiBase(): string | null {
+  return localStorage.getItem(API_BASE_KEY)
 }
 
 /** Pull a pairing token out of the QR URL fragment (#t=…), then scrub it. */
 export function adoptTokenFromUrl(): void {
-  const match = window.location.hash.match(/[#&]t=([A-Za-z0-9_-]+)/)
-  if (match) {
-    setToken(match[1])
+  const tokenMatch = window.location.hash.match(/[#&]t=([A-Za-z0-9_-]+)/)
+  const apiMatch = window.location.hash.match(/[#&]api=([^&]+)/)
+  if (tokenMatch) {
+    setToken(tokenMatch[1])
+    if (apiMatch) {
+      try {
+        const parsed = new URL(decodeURIComponent(apiMatch[1]))
+        setApiBase(parsed.origin)
+      } catch {
+        // ignore malformed api hint and keep same-origin fallback
+      }
+    }
     history.replaceState(null, '', window.location.pathname)
   }
 }
@@ -41,7 +60,9 @@ export async function rpc<K extends IpcChannel>(
   channel: K,
   req: IpcContract[K]['req']
 ): Promise<IpcContract[K]['res']> {
-  const res = await fetch(`/api/rpc/${channel}`, {
+  const apiBase = getApiBase() ?? window.location.origin
+  const url = new URL(`/api/rpc/${channel}`, apiBase)
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${getToken() ?? ''}`,

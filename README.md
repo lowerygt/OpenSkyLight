@@ -239,6 +239,7 @@ services:
       - OSL_PAIR_BASE_URL=https://your-public-hostname.example.com
       - OSL_DMZ_ALLOWED_ORIGINS=https://phone.example.com
       - OSL_DMZ_RATE_LIMIT_PER_MIN=120
+      - OSL_DMZ_ALLOW_OPEN_PAIRING=0
     volumes:
       - openskylight-data:/data
     restart: unless-stopped
@@ -260,8 +261,14 @@ For hardening and observability, the DMZ listener supports:
 
 - `OSL_DMZ_ALLOWED_ORIGINS` — comma-separated CORS allowlist
 - `OSL_DMZ_RATE_LIMIT_PER_MIN` — per-IP request cap (default 120/min)
+- `OSL_DMZ_ALLOW_OPEN_PAIRING` — keep `0` to disable unauthenticated remote
+  pairing bootstrap on DMZ (recommended)
 - structured security logs (`[dmz-security]`) for invalid origin, unauthorized,
   and rate-limited requests
+
+Phase 4 migration note: pairing QR links now include both token and API base
+in the URL fragment (`#t=...&api=...`), so existing companion installs can keep
+their local UI shell while syncing against the DMZ API when away from home.
 
 Then open `http://localhost:8420`.
 This mode uses the same renderer and SQLite-backed services, but desktop-only

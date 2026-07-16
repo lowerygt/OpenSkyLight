@@ -115,6 +115,7 @@ export interface WebHttpServerDeps {
         allowedOrigins: string[]
         rateLimitMax: number
         rateLimitWindowMs: number
+        allowOpenPairing: boolean
         onSecurityEvent?: (event: {
             kind: 'invalid_origin' | 'rate_limited' | 'unauthorized';
             ip: string;
@@ -128,6 +129,7 @@ export function createWebHttpServer(deps: WebHttpServerDeps) {
     const dmzAllowedOrigins = new Set((deps.dmz?.allowedOrigins ?? []).filter((o) => o.length > 0))
     const dmzRateLimitMax = deps.dmz?.rateLimitMax ?? DEFAULT_DMZ_RATE_LIMIT_PER_MIN
     const dmzRateLimitWindowMs = deps.dmz?.rateLimitWindowMs ?? DEFAULT_DMZ_RATE_LIMIT_WINDOW_MS
+    const dmzAllowOpenPairing = deps.dmz?.allowOpenPairing ?? false
 
     function getIp(req: IncomingMessage): string {
         return req.socket.remoteAddress ?? 'unknown'
@@ -228,6 +230,10 @@ export function createWebHttpServer(deps: WebHttpServerDeps) {
                     sendJson(res, 404, {ok: false, error: {code: 'NOT_FOUND', message: 'Unknown channel'}})
                     return
                 }
+                if (deps.surface === 'dmz' && channel === 'companion:issueToken' && !dmzAllowOpenPairing) {
+                    sendJson(res, 404, {ok: false, error: {code: 'NOT_FOUND', message: 'Unknown channel'}})
+                    return
+                }
                 if (deps.surface === 'dmz' && requiresDmzToken(channel)) {
                     const auth = req.headers.authorization ?? ''
                     const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
@@ -270,6 +276,7 @@ export async function main(): Promise<void> {
         .map((o) => o.trim())
         .filter((o) => o.length > 0)
     const dmzRateLimitPerMin = Number(process.env.OSL_DMZ_RATE_LIMIT_PER_MIN ?? DEFAULT_DMZ_RATE_LIMIT_PER_MIN)
+    const dmzAllowOpenPairing = process.env.OSL_DMZ_ALLOW_OPEN_PAIRING === '1'
 
     const {db} = openDatabase(dbPath)
     const deviceTz = (): string => DateTime.local().zoneName ?? 'UTC'
@@ -350,7 +357,8 @@ export async function main(): Promise<void> {
             issueToken: () => {
                 const token = tokens.issue()
                 const base = pairBaseUrl ?? `http://localhost:${dmzBasePort}/`
-                return {url: `${base.replace(/\/$/, '')}/#t=${token}`}
+                const normalized = `${base.replace(/\/$/, '')}/`
+                return {url: `${normalized}#t=${token}&api=${encodeURIComponent(normalized)}`}
             },
             unpairAll: () => tokens.revokeAll(),
             stop: () => undefined,
@@ -387,6 +395,7 @@ export async function main(): Promise<void> {
                 allowedOrigins: dmzAllowedOrigins,
                 rateLimitMax: Number.isFinite(dmzRateLimitPerMin) && dmzRateLimitPerMin > 0 ? dmzRateLimitPerMin : 60,
                 rateLimitWindowMs: DEFAULT_DMZ_RATE_LIMIT_WINDOW_MS,
+                allowOpenPairing: dmzAllowOpenPairing,
                 onSecurityEvent: (event) =>
                     console.warn(`[dmz-security] ${event.kind} ip=${event.ip} path=${event.path}`)
             }

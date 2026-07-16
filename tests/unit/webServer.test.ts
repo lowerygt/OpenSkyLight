@@ -133,9 +133,9 @@ describe('web server', () => {
         expect(allowed.status).toBe(200)
         expect(await allowed.json()).toEqual({ok: true, data: 'ok'})
 
-        // pairing bootstrap channel is intentionally unauthenticated
+        // remote open pairing is locked by default
         const issue = await fetch(`${base}/api/rpc/companion:issueToken`, {method: 'POST'})
-        expect(issue.status).toBe(200)
+        expect(issue.status).toBe(404)
     })
 
     it('dmz enforces origin allowlist and per-ip rate limits', async () => {
@@ -150,8 +150,9 @@ describe('web server', () => {
             rpcDispatch: async () => ({ok: true, data: 'ok'}),
             dmz: {
                 allowedOrigins: ['https://phone.example.com'],
-                rateLimitMax: 2,
+                rateLimitMax: 4,
                 rateLimitWindowMs: 60_000,
+                allowOpenPairing: true,
                 onSecurityEvent: (e) => events.push(e.kind)
             }
         })
@@ -174,6 +175,12 @@ describe('web server', () => {
         expect(preflight.status).toBe(204)
         expect(preflight.headers.get('access-control-allow-origin')).toBe('https://phone.example.com')
 
+        const pairingBootstrap = await fetch(`${base}/api/rpc/companion:issueToken`, {
+            method: 'POST',
+            headers: {Origin: 'https://phone.example.com'}
+        })
+        expect(pairingBootstrap.status).toBe(200)
+
         const one = await fetch(`${base}/api/rpc/lists:getAll`, {
             method: 'POST',
             headers: {Origin: 'https://phone.example.com', Authorization: 'Bearer paired-device-token'}
@@ -191,7 +198,13 @@ describe('web server', () => {
             method: 'POST',
             headers: {Origin: 'https://phone.example.com', Authorization: 'Bearer paired-device-token'}
         })
-        expect(three.status).toBe(429)
+        expect(three.status).toBe(200)
+
+        const four = await fetch(`${base}/api/rpc/lists:getAll`, {
+            method: 'POST',
+            headers: {Origin: 'https://phone.example.com', Authorization: 'Bearer paired-device-token'}
+        })
+        expect(four.status).toBe(429)
         expect(events).toContain('invalid_origin')
         expect(events).toContain('rate_limited')
     })
