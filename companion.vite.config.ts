@@ -5,7 +5,7 @@ import { resolve } from 'path'
 
 /**
  * The companion mobile web app — built separately from the electron-vite
- * bundles and served on the LAN by the main process from out/companion.
+ * bundles and served by the runtime from out/companion.
  */
 export default defineConfig({
   root: resolve(__dirname, 'src/companion'),

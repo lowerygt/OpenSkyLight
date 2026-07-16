@@ -1,0 +1,23 @@
+services:
+  openskylight:
+    build: .
+    container_name: openskylight
+    ports:
+      - "8420:8420" # LAN kiosk UI
+      - "8421:8421" # optional public companion listener
+    environment:
+      - PORT=8420
+      - OSL_DATA_DIR=/data
+      - OSL_DMZ_PORT=8421
+      - OSL_DMZ_SERVE_COMPANION_UI=1
+      - OSL_PAIR_BASE_URL=https://skylight.example.com
+      # - OSL_PAIR_API_BASE_URL=https://skylight.example.com
+      # - OSL_DMZ_ALLOWED_ORIGINS=https://phone.example.com
+      - OSL_DMZ_RATE_LIMIT_PER_MIN=120
+      - OSL_DMZ_ALLOW_OPEN_PAIRING=0
+    volumes:
+      - openskylight-data:/data
+    restart: unless-stopped
+
+volumes:
+  openskylight-data:

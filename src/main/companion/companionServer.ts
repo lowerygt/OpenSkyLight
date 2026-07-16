@@ -246,7 +246,8 @@ export function createCompanionServer(deps: CompanionServerDeps) {
     const { port } = deps.settings.getAll().companion
     const token = deps.tokens.issue()
     const [best] = pickLanAddresses()
-    return { url: `http://${best ?? 'localhost'}:${boundPort ?? port}/#t=${token}` }
+    const base = `http://${best ?? 'localhost'}:${boundPort ?? port}/`
+    return { url: `${base}#t=${token}&api=${encodeURIComponent(base)}` }
   }
 
   function unpairAll(): void {

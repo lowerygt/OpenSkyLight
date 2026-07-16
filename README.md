@@ -1,6 +1,9 @@
 # OpenSkyLight
 
-An open-source, fully standalone family calendar display — a [Skylight Calendar](https://myskylight.com) alternative with no subscription, no cloud account, and no Home Assistant. One Electron app owns the whole touchscreen: calendar, family member color coding, Google sync, weather, chores, rewards, lists, meals, news, live cameras, and a photo screensaver.
+An open-source, fully standalone family calendar display — a [Skylight Calendar](https://myskylight.com) alternative
+with no subscription, no cloud account, and no Home Assistant. One Electron app owns the whole touchscreen: calendar,
+family member color coding, Google sync, weather, chores, rewards, lists, meals, news, live cameras, and a photo
+screensaver.
 
 ## What it looks like
 
@@ -15,18 +18,18 @@ swapped in):
 
 ![Home screen in dark mode](docs/screenshots/home-dark.png)
 
-| Week view with the meal strip | Touch-first event editor |
-| --- | --- |
+| Week view with the meal strip           | Touch-first event editor                     |
+|-----------------------------------------|----------------------------------------------|
 | ![Week view](docs/screenshots/week.png) | ![Event editor](docs/screenshots/editor.png) |
 
-| Month view | Chore board with star rewards | Family lists |
-| --- | --- | --- |
+| Month view                                | Chore board with star rewards          | Family lists                         |
+|-------------------------------------------|----------------------------------------|--------------------------------------|
 | ![Month view](docs/screenshots/month.png) | ![Chores](docs/screenshots/chores.png) | ![Lists](docs/screenshots/lists.png) |
 
 The phone companion app (pair by QR, served by the display itself — no cloud):
 
-| Lists on your phone | Chores on your phone |
-| --- | --- |
+| Lists on your phone                                      | Chores on your phone                                       |
+|----------------------------------------------------------|------------------------------------------------------------|
 | ![Companion lists](docs/screenshots/companion-lists.png) | ![Companion chores](docs/screenshots/companion-chores.png) |
 
 Every screenshot is generated from a clean install by `node scripts/shot-readme.mjs`,
@@ -98,6 +101,34 @@ which seeds demo data through the app's real IPC layer — so they stay honest.
   your weather location (no network), falling back to 7pm–7am without one.
   Settings → General → Appearance also offers always-Light / always-Dark.
 
+### Feature implementation matrix
+
+| Feature                                                   | Electron app | Web / Docker |
+|-----------------------------------------------------------|--------------|--------------|
+| Customizable Home screen                                  | ✅            | ✅            |
+| Bird detections (BirdNET-Go) tile                         | ✅            | ✅            |
+| IP camera (RTSP) tiles                                    | ✅            | ❌            |
+| Week / Day / Month / Agenda views                         | ✅            | ✅            |
+| Family member profiles + color filters                    | ✅            | ✅            |
+| Local calendars (create/edit/delete)                      | ✅            | ✅            |
+| Recurring events + this/following/all edits               | ✅            | ✅            |
+| Two-way Google Calendar sync                              | ✅            | ❌            |
+| ICS feed subscriptions                                    | ✅            | ❌            |
+| Weather header + forecast                                 | ✅            | ✅            |
+| Parental PIN lock                                         | ✅            | ✅            |
+| Chores & routines                                         | ✅            | ✅            |
+| Star rewards                                              | ✅            | ✅            |
+| Custom lists                                              | ✅            | ✅            |
+| Phone companion app pairing + access                      | ✅            | ✅            |
+| Meal planning                                             | ✅            | ✅            |
+| Photo screensaver                                         | ✅            | ❌            |
+| Sleep schedule / display wake window                      | ✅            | ❌            |
+| Launch-on-startup / single-instance / crash auto-relaunch | ✅            | ❌            |
+| Built-in on-screen keyboard                               | ✅            | ✅            |
+| Warm visual design (Fraunces + Nunito theme)              | ✅            | ✅            |
+| Dark mode that follows the sun                            | ✅            | ✅            |
+| Auto-update + quiet-hours install                         | ✅            | ❌            |
+
 ### Companion app (phones)
 
 Phones on your home Wi-Fi can edit **lists, meals, and chores** (and see a
@@ -168,14 +199,110 @@ npm install        # also rebuilds better-sqlite3 for Electron
 npm run dev        # windowed dev mode with hot reload
 npm run dev -- --kiosk   # fullscreen kiosk in dev
 npm run dev:companion    # companion web app with hot reload (proxies /api to a running kiosk)
+npm run dev:web          # web backend + web UI dev server (UI on :5173, API proxied)
+npm run start:web        # web backend only (serves built web app on :8420)
 npm test           # unit tests (run inside Electron's Node for the native module)
 npm run typecheck
 node scripts/e2e-smoke.mjs   # launches the built app and creates an event end-to-end
 npm run dist       # NSIS installer + portable exe (Windows)
 ```
 
+If `npm install` reports blocked install scripts, approve and rerun install:
+
+```bash
+npm install-scripts approve -a && npm install
+```
+
 Production builds run fullscreen kiosk by default; pass `--windowed` to opt out.
 Data lives in SQLite at `%APPDATA%/openskylight/openskylight.db`.
+
+## Docker (web mode)
+
+Run OpenSkyLight as a browser app while keeping Electron available for desktop:
+
+```bash
+docker build -t openskylight-web .
+docker run --rm -p 8420:8420 -v openskylight-data:/data openskylight-web
+```
+
+Example `docker-compose.yml` (persistent DB volume + auto restart):
+
+```yaml
+services:
+  openskylight:
+    build: .
+    container_name: openskylight
+    ports:
+      - "8420:8420"
+      - "8421:8421" # optional DMZ companion+API surface
+    environment:
+      - PORT=8420
+      - OSL_DATA_DIR=/data
+      - OSL_DMZ_PORT=8421
+      - OSL_PAIR_BASE_URL=https://your-public-hostname.example.com
+      # - OSL_PAIR_API_BASE_URL=https://your-public-hostname.example.com
+      - OSL_DMZ_ALLOWED_ORIGINS=https://phone.example.com
+      - OSL_DMZ_RATE_LIMIT_PER_MIN=120
+      - OSL_DMZ_ALLOW_OPEN_PAIRING=0
+      - OSL_DMZ_SERVE_COMPANION_UI=1
+    volumes:
+      - openskylight-data:/data
+    restart: unless-stopped
+
+volumes:
+  openskylight-data:
+```
+
+```bash
+docker compose up -d --build
+```
+
+### Docker networking model
+
+- `PORT` (default `8420`) serves the main OpenSkyLight web UI.
+- `OSL_DMZ_PORT` (optional) starts a second listener intended for companion traffic.
+- Keep `8420` LAN-only. Only publish/forward the DMZ port if you need remote phone access.
+
+### Recommended deployments
+
+1. **LAN-only kiosk UI + remote companion on one public port (most common)**
+    - Keep `PORT=8420` internal/LAN.
+    - Set `OSL_DMZ_PORT=8421` and publish `8421`.
+    - Set `OSL_DMZ_SERVE_COMPANION_UI=1` so `/` and `/api/rpc` for companion share the same origin.
+    - Set `OSL_PAIR_BASE_URL` to that public companion URL (for QR links).
+    - Keep `OSL_DMZ_ALLOW_OPEN_PAIRING=0` for locked-down remote bootstrap.
+2. **LAN-only (no remote companion)**
+    - Omit `OSL_DMZ_PORT`.
+    - Set `OSL_PAIR_BASE_URL` to your LAN URL (for example `http://192.168.1.50:8420`).
+
+### Environment variables (web/docker runtime)
+
+| Variable                     | Default                           | Purpose                                                   |
+|------------------------------|-----------------------------------|-----------------------------------------------------------|
+| `PORT`                       | `8420`                            | Main web listener (kiosk UI + API on LAN)                 |
+| `OSL_DATA_DIR`               | `./data`                          | Directory for persistent runtime data                     |
+| `OSL_DB_PATH`                | `${OSL_DATA_DIR}/openskylight.db` | Explicit SQLite file path                                 |
+| `OSL_WEB_ROOT`               | `out/web`                         | Built kiosk web bundle path                               |
+| `OSL_DMZ_PORT`               | unset                             | Optional DMZ listener port                                |
+| `OSL_DMZ_SERVE_COMPANION_UI` | `0`                               | `1` = serve companion shell on DMZ listener               |
+| `OSL_DMZ_COMPANION_WEB_ROOT` | `out/companion`                   | Companion bundle path for DMZ UI serving                  |
+| `OSL_DMZ_ALLOWED_ORIGINS`    | unset                             | Comma-separated CORS allowlist for DMZ RPC                |
+| `OSL_DMZ_RATE_LIMIT_PER_MIN` | `120`                             | Per-IP DMZ request cap                                    |
+| `OSL_DMZ_ALLOW_OPEN_PAIRING` | `0`                               | `1` = allow unauthenticated `companion:issueToken` on DMZ |
+| `OSL_PAIR_BASE_URL`          | `http://localhost:<PORT>/`        | URL encoded into pairing QR (what phones open first)      |
+| `OSL_PAIR_API_BASE_URL`      | same as `OSL_PAIR_BASE_URL`       | Optional API origin hint for companion RPC                |
+
+DMZ hardening/visibility includes CORS gating, rate limiting, token auth for DMZ
+channels, and structured security logs (`[dmz-security]`).
+
+Companion pairing flow: first scan opens the install page in Safari. After
+adding to Home Screen, open the installed app and scan the kiosk QR again in
+the app's built-in scanner to store token/API in app-local storage.
+
+Then open `http://localhost:8420`.
+This mode uses the same renderer and SQLite-backed services, but desktop-only
+features (native Google OAuth flow, RTSP camera streaming, screensaver folder picker,
+auto-update install) are unavailable in web mode.
 
 ## Architecture
 

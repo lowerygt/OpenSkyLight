@@ -1,6 +1,7 @@
 import type { IpcChannel, IpcContract, IpcResult } from '@shared/ipc/contract'
 
 const TOKEN_KEY = 'osl.companionToken'
+const API_BASE_KEY = 'osl.companionApiBase'
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
@@ -12,15 +13,51 @@ export function setToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(API_BASE_KEY)
 }
 
-/** Pull a pairing token out of the QR URL fragment (#t=…), then scrub it. */
-export function adoptTokenFromUrl(): void {
-  const match = window.location.hash.match(/[#&]t=([A-Za-z0-9_-]+)/)
-  if (match) {
-    setToken(match[1])
-    history.replaceState(null, '', window.location.pathname)
+function setApiBase(url: string): void {
+  localStorage.setItem(API_BASE_KEY, url)
+}
+
+function getApiBase(): string | null {
+  return localStorage.getItem(API_BASE_KEY)
+}
+
+type PairingHint = { token: string; api: string | null }
+
+function parsePairingHint(rawUrl: string): PairingHint | null {
+  try {
+    const url = new URL(rawUrl, window.location.origin)
+    const query = url.searchParams
+    const fragment = new URLSearchParams(url.hash.replace(/^#/, ''))
+    const pathToken = url.pathname.match(/^\/p\/([A-Za-z0-9_-]+)(?:\/|$)/)?.[1] ?? null
+    const token = query.get('t') ?? fragment.get('t') ?? pathToken
+    if (!token) return null
+    return { token, api: query.get('api') ?? fragment.get('api') }
+  } catch {
+    return null
   }
+}
+
+function applyPairingHint(hint: PairingHint): void {
+  setToken(hint.token)
+  if (hint.api) {
+    try {
+      const parsed = new URL(decodeURIComponent(hint.api))
+      setApiBase(parsed.origin)
+    } catch {
+      // ignore malformed api hint and keep same-origin fallback
+    }
+  }
+}
+
+/** Save pairing details from a scanned/pasted URL. */
+export function adoptTokenFromPairingUrl(rawUrl: string): boolean {
+  const hint = parsePairingHint(rawUrl)
+  if (!hint) return false
+  applyPairingHint(hint)
+  return true
 }
 
 let onUnauthorized: () => void = () => {}
@@ -41,7 +78,9 @@ export async function rpc<K extends IpcChannel>(
   channel: K,
   req: IpcContract[K]['req']
 ): Promise<IpcContract[K]['res']> {
-  const res = await fetch(`/api/rpc/${channel}`, {
+  const apiBase = getApiBase() ?? window.location.origin
+  const url = new URL(`/api/rpc/${channel}`, apiBase)
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${getToken() ?? ''}`,
