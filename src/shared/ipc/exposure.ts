@@ -16,6 +16,14 @@ export const DMZ_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel>([
   'sync:now'
 ])
 
+/**
+ * DMZ API auth policy: issueToken is the pairing bootstrap and stays unauthenticated.
+ * Every other DMZ-exposed channel requires a valid paired-device bearer token.
+ */
+export function requiresDmzToken(channel: IpcChannel): boolean {
+  return channel !== 'companion:issueToken'
+}
+
 export function isChannelExposed(channel: IpcChannel, surface: ApiSurface): boolean {
   if (surface === 'lan') return true
   return DMZ_CHANNELS.has(channel)

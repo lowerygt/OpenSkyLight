@@ -4,7 +4,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DateTime } from 'luxon'
 import type { IpcChannel } from '@shared/ipc/contract'
-import { isChannelExposed, type ApiSurface } from '@shared/ipc/exposure'
+import { isChannelExposed, requiresDmzToken, type ApiSurface } from '@shared/ipc/exposure'
 import { openDatabase } from '../main/db/client'
 import { createSettingsService } from '../main/services/settingsService'
 import { createPeopleService } from '../main/services/peopleService'
@@ -21,6 +21,7 @@ import { createBirdNetService } from '../main/services/birdnetService'
 import { createIcsSync } from '../main/sync/icsSync'
 import { AppError } from '../main/services/errors'
 import { buildChannelTable, dispatch, type Services } from '../main/ipc/core'
+import { createCompanionTokens } from '../main/companion/companionTokens'
 
 const MAX_BODY_BYTES = 512 * 1024
 const MIME: Record<string, string> = {
@@ -107,6 +108,7 @@ export interface WebHttpServerDeps {
   version: string
   surface: ApiSurface
   rpcDispatch: (channel: IpcChannel, payload: unknown) => Promise<unknown>
+  verifyToken?: (token: string) => boolean
 }
 
 export function createWebHttpServer(deps: WebHttpServerDeps) {
@@ -139,6 +141,14 @@ export function createWebHttpServer(deps: WebHttpServerDeps) {
         if (!isChannelExposed(channel, deps.surface)) {
           sendJson(res, 404, { ok: false, error: { code: 'NOT_FOUND', message: 'Unknown channel' } })
           return
+        }
+        if (deps.surface === 'dmz' && requiresDmzToken(channel)) {
+          const auth = req.headers.authorization ?? ''
+          const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+          if (!deps.verifyToken?.(token)) {
+            sendJson(res, 401, { ok: false, error: { code: 'UNAUTHORIZED', message: 'Not paired' } })
+            return
+          }
         }
         const result = await deps.rpcDispatch(channel, payload)
         sendJson(res, 200, result)
@@ -173,9 +183,12 @@ export async function main(): Promise<void> {
   const deviceTz = (): string => DateTime.local().zoneName ?? 'UTC'
 
   const settings = createSettingsService(db)
+  const tokens = createCompanionTokens(settings)
   const chores = createChoresService(db, deviceTz)
   const icsSync = createIcsSync({ db, deviceTz })
   const broadcast = (_channel: string, _payload: unknown): void => {}
+  const pairBaseUrl = process.env.OSL_PAIR_BASE_URL?.trim() || null
+  const dmzBasePort = Number.isFinite(dmzPort) && dmzPort > 0 ? dmzPort : port
 
   const services: Services = {
     settings,
@@ -234,9 +247,19 @@ export async function main(): Promise<void> {
     birdnet: createBirdNetService(),
     companion: {
       applySettings: () => undefined,
-      getStatus: () => ({ running: false, port: 0, urls: [], pairedCount: 0, lastError: null }),
-      issueToken: () => unsupported('Companion pairing'),
-      unpairAll: () => undefined,
+      getStatus: () => ({
+        running: true,
+        port: dmzBasePort,
+        urls: [pairBaseUrl ?? `http://localhost:${dmzBasePort}/`],
+        pairedCount: tokens.count(),
+        lastError: null
+      }),
+      issueToken: () => {
+        const token = tokens.issue()
+        const base = pairBaseUrl ?? `http://localhost:${dmzBasePort}/`
+        return { url: `${base.replace(/\/$/, '')}/#t=${token}` }
+      },
+      unpairAll: () => tokens.revokeAll(),
       stop: () => undefined,
       shutdown: () => undefined
     }
@@ -251,7 +274,8 @@ export async function main(): Promise<void> {
     staticRoot,
     version: process.env.npm_package_version ?? 'dev',
     surface: 'lan',
-    rpcDispatch: (channel, payload) => dispatch(services, table, channel, payload, { gate: 'pin', broadcast })
+    rpcDispatch: (channel, payload) => dispatch(services, table, channel, payload, { gate: 'pin', broadcast }),
+    verifyToken: tokens.verify
   })
 
   server.listen(port, '0.0.0.0', () => {
@@ -264,7 +288,8 @@ export async function main(): Promise<void> {
       staticRoot,
       version: process.env.npm_package_version ?? 'dev',
       surface: 'dmz',
-      rpcDispatch: (channel, payload) => dispatch(services, table, channel, payload, { gate: 'pin', broadcast })
+      rpcDispatch: (channel, payload) => dispatch(services, table, channel, payload, { gate: 'pin', broadcast }),
+      verifyToken: tokens.verify
     })
     dmzServer.listen(dmzPort, '0.0.0.0', () => {
       console.log(`[web] DMZ API serving on http://0.0.0.0:${dmzPort} (no static UI)`)

@@ -236,6 +236,7 @@ services:
       - PORT=8420
       - OSL_DATA_DIR=/data
       - OSL_DMZ_PORT=8421
+      - OSL_PAIR_BASE_URL=https://your-public-hostname.example.com
     volumes:
       - openskylight-data:/data
     restart: unless-stopped
@@ -251,6 +252,8 @@ docker compose up -d --build
 With `OSL_DMZ_PORT` set, the app serves a second listener that only exposes the
 DMZ API channel allowlist and blocks all static/UI routes. Keep `8420` LAN-only
 for the main screens, and port-forward only the DMZ API port.
+Most DMZ channels require a paired-device bearer token; only
+`companion:issueToken` remains open as the pairing bootstrap.
 
 Then open `http://localhost:8420`.
 This mode uses the same renderer and SQLite-backed services, but desktop-only

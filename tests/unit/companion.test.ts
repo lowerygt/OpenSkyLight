@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -56,6 +56,24 @@ describe('companionTokens', () => {
     expect(tokens.count()).toBe(0)
     expect(tokens.verify('x')).toBe(false)
     expect(tokens.verify(tokens.issue())).toBe(true)
+  })
+
+  it('expires tokens after ttl', () => {
+    const now = Date.now()
+    vi.spyOn(Date, 'now').mockReturnValue(now)
+    const tokens = createCompanionTokens(settingsStub())
+    const token = tokens.issue()
+    vi.spyOn(Date, 'now').mockReturnValue(now + 1000 * 60 * 60 * 24 * 91) // 91 days
+    expect(tokens.verify(token)).toBe(false)
+    vi.restoreAllMocks()
+  })
+
+  it('migrates legacy hash arrays to active tokens', () => {
+    const settings = settingsStub()
+    const legacyHash = 'a'.repeat(64)
+    settings.setRaw('companion.tokens.v1', JSON.stringify([legacyHash]))
+    const tokens = createCompanionTokens(settings)
+    expect(tokens.count()).toBe(1)
   })
 })
 

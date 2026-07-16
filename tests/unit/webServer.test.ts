@@ -33,6 +33,7 @@ describe('web server', () => {
       staticRoot,
       version: '0.0.0-test',
       surface,
+      verifyToken: (token) => token === 'paired-device-token',
       rpcDispatch: async (channel, payload) => {
         seen.push({ channel, payload })
         if (dispatchImpl) return dispatchImpl(channel, payload)
@@ -116,8 +117,24 @@ describe('web server', () => {
     const lanOnly = await fetch(`${base}/api/rpc/settings:getAll`, { method: 'POST' })
     expect(lanOnly.status).toBe(404)
 
-    const allowed = await fetch(`${base}/api/rpc/lists:getAll`, { method: 'POST' })
+    const noAuth = await fetch(`${base}/api/rpc/lists:getAll`, { method: 'POST' })
+    expect(noAuth.status).toBe(401)
+
+    const badAuth = await fetch(`${base}/api/rpc/lists:getAll`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer wrong' }
+    })
+    expect(badAuth.status).toBe(401)
+
+    const allowed = await fetch(`${base}/api/rpc/lists:getAll`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer paired-device-token' }
+    })
     expect(allowed.status).toBe(200)
     expect(await allowed.json()).toEqual({ ok: true, data: 'ok' })
+
+    // pairing bootstrap channel is intentionally unauthenticated
+    const issue = await fetch(`${base}/api/rpc/companion:issueToken`, { method: 'POST' })
+    expect(issue.status).toBe(200)
   })
 })
