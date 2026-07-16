@@ -176,6 +176,12 @@ node scripts/e2e-smoke.mjs   # launches the built app and creates an event end-t
 npm run dist       # NSIS installer + portable exe (Windows)
 ```
 
+If `npm install` reports blocked install scripts, approve and rerun install:
+
+```bash
+npm install-scripts approve -a && npm install
+```
+
 Production builds run fullscreen kiosk by default; pass `--windowed` to opt out.
 Data lives in SQLite at `%APPDATA%/openskylight/openskylight.db`.
 
