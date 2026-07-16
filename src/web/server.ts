@@ -288,7 +288,9 @@ export async function main(): Promise<void> {
     const broadcast = (_channel: string, _payload: unknown): void => {
     }
     const pairBaseUrl = process.env.OSL_PAIR_BASE_URL?.trim() || null
-    const dmzBasePort = Number.isFinite(dmzPort) && dmzPort > 0 ? dmzPort : port
+    const pairApiBaseUrl = process.env.OSL_PAIR_API_BASE_URL?.trim() || null
+    const pairShellBase = `${(pairBaseUrl ?? `http://localhost:${port}/`).replace(/\/$/, '')}/`
+    const pairApiBase = `${(pairApiBaseUrl ?? pairShellBase).replace(/\/$/, '')}/`
 
     const services: Services = {
         settings,
@@ -349,16 +351,14 @@ export async function main(): Promise<void> {
             applySettings: () => undefined,
             getStatus: () => ({
                 running: true,
-                port: dmzBasePort,
-                urls: [pairBaseUrl ?? `http://localhost:${dmzBasePort}/`],
+                port,
+                urls: [pairShellBase],
                 pairedCount: tokens.count(),
                 lastError: null
             }),
             issueToken: () => {
                 const token = tokens.issue()
-                const base = pairBaseUrl ?? `http://localhost:${dmzBasePort}/`
-                const normalized = `${base.replace(/\/$/, '')}/`
-                return {url: `${normalized}#t=${token}&api=${encodeURIComponent(normalized)}`}
+                return {url: `${pairShellBase}#t=${token}&api=${encodeURIComponent(pairApiBase)}`}
             },
             unpairAll: () => tokens.revokeAll(),
             stop: () => undefined,

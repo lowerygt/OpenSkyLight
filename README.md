@@ -236,7 +236,8 @@ services:
       - PORT=8420
       - OSL_DATA_DIR=/data
       - OSL_DMZ_PORT=8421
-      - OSL_PAIR_BASE_URL=https://your-public-hostname.example.com
+      - OSL_PAIR_BASE_URL=http://192.168.1.50:8420
+      - OSL_PAIR_API_BASE_URL=https://your-public-hostname.example.com
       - OSL_DMZ_ALLOWED_ORIGINS=https://phone.example.com
       - OSL_DMZ_RATE_LIMIT_PER_MIN=120
       - OSL_DMZ_ALLOW_OPEN_PAIRING=0
@@ -264,6 +265,9 @@ For hardening and observability, the DMZ listener supports:
 - `OSL_DMZ_RATE_LIMIT_PER_MIN` — per-IP request cap (default 120/min)
 - `OSL_DMZ_ALLOW_OPEN_PAIRING` — keep `0` to disable unauthenticated remote
   pairing bootstrap on DMZ (recommended)
+- `OSL_PAIR_BASE_URL` — URL phones open for pairing/install (companion shell)
+- `OSL_PAIR_API_BASE_URL` — optional API origin written into QR (`#api=...`) for
+  away-from-home sync; defaults to `OSL_PAIR_BASE_URL` when unset
 - structured security logs (`[dmz-security]`) for invalid origin, unauthorized,
   and rate-limited requests
 
@@ -274,7 +278,7 @@ their local UI shell while syncing against the DMZ API when away from home.
 Then open `http://localhost:8420`.
 This mode uses the same renderer and SQLite-backed services, but desktop-only
 features (native Google OAuth flow, RTSP camera streaming, screensaver folder picker,
-auto-update install, companion pairing) are unavailable in web mode.
+auto-update install) are unavailable in web mode.
 
 ## Architecture
 
