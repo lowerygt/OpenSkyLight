@@ -98,6 +98,34 @@ which seeds demo data through the app's real IPC layer — so they stay honest.
   your weather location (no network), falling back to 7pm–7am without one.
   Settings → General → Appearance also offers always-Light / always-Dark.
 
+### Feature implementation matrix
+
+| Feature | Electron app | Web / Docker |
+| --- | --- | --- |
+| Customizable Home screen | ✅ | ✅ |
+| Bird detections (BirdNET-Go) tile | ✅ | ✅ |
+| IP camera (RTSP) tiles | ✅ | ❌ |
+| Week / Day / Month / Agenda views | ✅ | ✅ |
+| Family member profiles + color filters | ✅ | ✅ |
+| Local calendars (create/edit/delete) | ✅ | ✅ |
+| Recurring events + this/following/all edits | ✅ | ✅ |
+| Two-way Google Calendar sync | ✅ | ❌ |
+| ICS feed subscriptions | ✅ | ❌ |
+| Weather header + forecast | ✅ | ✅ |
+| Parental PIN lock | ✅ | ✅ |
+| Chores & routines | ✅ | ✅ |
+| Star rewards | ✅ | ✅ |
+| Custom lists | ✅ | ✅ |
+| Phone companion app pairing + access | ✅ | ❌ |
+| Meal planning | ✅ | ✅ |
+| Photo screensaver | ✅ | ❌ |
+| Sleep schedule / display wake window | ✅ | ❌ |
+| Launch-on-startup / single-instance / crash auto-relaunch | ✅ | ❌ |
+| Built-in on-screen keyboard | ✅ | ✅ |
+| Warm visual design (Fraunces + Nunito theme) | ✅ | ✅ |
+| Dark mode that follows the sun | ✅ | ✅ |
+| Auto-update + quiet-hours install | ✅ | ❌ |
+
 ### Companion app (phones)
 
 Phones on your home Wi-Fi can edit **lists, meals, and chores** (and see a
@@ -192,6 +220,30 @@ Run OpenSkyLight as a browser app while keeping Electron available for desktop:
 ```bash
 docker build -t openskylight-web .
 docker run --rm -p 8420:8420 -v openskylight-data:/data openskylight-web
+```
+
+Example `docker-compose.yml` (persistent DB volume + auto restart):
+
+```yaml
+services:
+  openskylight:
+    build: .
+    container_name: openskylight
+    ports:
+      - "8420:8420"
+    environment:
+      - PORT=8420
+      - OSL_DATA_DIR=/data
+    volumes:
+      - openskylight-data:/data
+    restart: unless-stopped
+
+volumes:
+  openskylight-data:
+```
+
+```bash
+docker compose up -d --build
 ```
 
 Then open `http://localhost:8420`.

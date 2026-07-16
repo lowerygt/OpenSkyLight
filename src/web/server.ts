@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { mkdirSync, promises as fs } from 'node:fs'
 import { extname, join, normalize, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { DateTime } from 'luxon'
 import type { IpcChannel } from '@shared/ipc/contract'
 import { openDatabase } from '../main/db/client'
@@ -100,7 +101,57 @@ async function serveStatic(staticRoot: string, res: ServerResponse, urlPath: str
   res.end(data)
 }
 
-async function main(): Promise<void> {
+export interface WebHttpServerDeps {
+  staticRoot: string
+  version: string
+  rpcDispatch: (channel: IpcChannel, payload: unknown) => Promise<unknown>
+}
+
+export function createWebHttpServer(deps: WebHttpServerDeps) {
+  return createServer((req, res) => {
+    const url = req.url ?? '/'
+    if (url === '/api/health' && req.method === 'GET') {
+      sendJson(res, 200, { app: 'openskylight-web', version: deps.version })
+      return
+    }
+    const rpcMatch = url.match(/^\/api\/rpc\/([^/?]+)$/)
+    if (rpcMatch) {
+      if (req.method !== 'POST') {
+        sendJson(res, 405, { ok: false, error: { code: 'METHOD', message: 'POST only' } })
+        return
+      }
+      void (async () => {
+        const body = await readBody(req)
+        if (body === null) {
+          sendJson(res, 413, { ok: false, error: { code: 'TOO_LARGE', message: 'Request too large' } })
+          return
+        }
+        let payload: unknown
+        try {
+          payload = body.trim() === '' ? undefined : JSON.parse(body)
+        } catch {
+          sendJson(res, 400, { ok: false, error: { code: 'INVALID', message: 'Body must be JSON' } })
+          return
+        }
+        const channel = decodeURIComponent(rpcMatch[1]) as IpcChannel
+        const result = await deps.rpcDispatch(channel, payload)
+        sendJson(res, 200, result)
+      })()
+      return
+    }
+    if (url.startsWith('/api/')) {
+      sendJson(res, 404, { ok: false, error: { code: 'NOT_FOUND', message: 'Unknown endpoint' } })
+      return
+    }
+    if (req.method !== 'GET') {
+      res.writeHead(405).end()
+      return
+    }
+    void serveStatic(deps.staticRoot, res, url)
+  })
+}
+
+export async function main(): Promise<void> {
   const dataDir = process.env.OSL_DATA_DIR ?? join(process.cwd(), 'data')
   mkdirSync(dataDir, { recursive: true })
   const dbPath = process.env.OSL_DB_PATH ?? join(dataDir, 'openskylight.db')
@@ -185,46 +236,10 @@ async function main(): Promise<void> {
     zone: deviceTz()
   })
 
-  const server = createServer((req, res) => {
-    const url = req.url ?? '/'
-    if (url === '/api/health' && req.method === 'GET') {
-      sendJson(res, 200, { app: 'openskylight-web', version: process.env.npm_package_version ?? 'dev' })
-      return
-    }
-    const rpcMatch = url.match(/^\/api\/rpc\/([^/?]+)$/)
-    if (rpcMatch) {
-      if (req.method !== 'POST') {
-        sendJson(res, 405, { ok: false, error: { code: 'METHOD', message: 'POST only' } })
-        return
-      }
-      void (async () => {
-        const body = await readBody(req)
-        if (body === null) {
-          sendJson(res, 413, { ok: false, error: { code: 'TOO_LARGE', message: 'Request too large' } })
-          return
-        }
-        let payload: unknown
-        try {
-          payload = body.trim() === '' ? undefined : JSON.parse(body)
-        } catch {
-          sendJson(res, 400, { ok: false, error: { code: 'INVALID', message: 'Body must be JSON' } })
-          return
-        }
-        const channel = decodeURIComponent(rpcMatch[1]) as IpcChannel
-        const result = await dispatch(services, table, channel, payload, { gate: 'pin', broadcast })
-        sendJson(res, 200, result)
-      })()
-      return
-    }
-    if (url.startsWith('/api/')) {
-      sendJson(res, 404, { ok: false, error: { code: 'NOT_FOUND', message: 'Unknown endpoint' } })
-      return
-    }
-    if (req.method !== 'GET') {
-      res.writeHead(405).end()
-      return
-    }
-    void serveStatic(staticRoot, res, url)
+  const server = createWebHttpServer({
+    staticRoot,
+    version: process.env.npm_package_version ?? 'dev',
+    rpcDispatch: (channel, payload) => dispatch(services, table, channel, payload, { gate: 'pin', broadcast })
   })
 
   server.listen(port, '0.0.0.0', () => {
@@ -233,4 +248,6 @@ async function main(): Promise<void> {
   })
 }
 
-void main()
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  void main()
+}
