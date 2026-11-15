@@ -958,6 +958,7 @@ function CompanionSection() {
   const mutation = useSettingsMutation()
   const { data: status } = useCompanionStatus()
   const companionMutations = useCompanionMutations()
+  const { data: appInfo } = useAppInfo()
   const [qr, setQr] = useState<{ url: string; dataUrl: string } | null>(null)
   const [portDraft, setPortDraft] = useState<string | null>(null)
   if (!settings) return null
@@ -1028,7 +1029,14 @@ function CompanionSection() {
               )}
             </div>
             <p className="text-sm font-semibold text-ink-faint">
-              If phones can't connect, allow OpenSkyLight through Windows Firewall (Private networks).
+              {appInfo?.platform === 'linux' ? (
+                <>
+                  If phones can't connect, open the port in the firewall:{' '}
+                  <span className="font-mono font-bold">sudo ufw allow {companion.port}/tcp</span>
+                </>
+              ) : (
+                "If phones can't connect, allow OpenSkyLight through Windows Firewall (Private networks)."
+              )}
             </p>
           </>
         )}
