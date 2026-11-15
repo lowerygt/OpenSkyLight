@@ -162,6 +162,8 @@ export type IpcContract = {
   'screensaver:pickFolder': { req: void; res: { folder: string | null } }
   'screensaver:listPhotos': { req: void; res: string[] }
   'kiosk:previewScreensaver': { req: void; res: void }
+  /** Renderer-reported user activity (throttled); drives idle detection on Linux. */
+  'kiosk:activity': { req: void; res: void }
 
   'companion:getStatus': {
     req: void

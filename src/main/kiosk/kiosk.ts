@@ -18,6 +18,18 @@ export function createKiosk(deps: { settings: SettingsService; broadcast: (ch: s
   let screensaverOn = false
   let sleeping = false
   let blockerId: number | null = null
+  // Linux: powerMonitor.getSystemIdleTime is unreliable (Wayland, some X11 setups), so the
+  // renderer reports pointer/touch/key activity and idle time is measured from that.
+  let lastActivity = Date.now()
+
+  function reportActivity(): void {
+    lastActivity = Date.now()
+  }
+
+  function idleSeconds(): number {
+    if (process.platform === 'linux') return Math.floor((Date.now() - lastActivity) / 1000)
+    return powerMonitor.getSystemIdleTime()
+  }
 
   /** Photos are served through osl-photo:// so the sandboxed renderer never touches the filesystem. */
   function registerPhotoProtocol(): void {
@@ -103,8 +115,7 @@ export function createKiosk(deps: { settings: SettingsService; broadcast: (ch: s
 
     idleTimer = setInterval(() => {
       const s = settings.getAll().screensaver
-      const idleSeconds = powerMonitor.getSystemIdleTime()
-      setScreensaver(s.folder !== null && idleSeconds >= s.idleMinutes * 60)
+      setScreensaver(s.folder !== null && idleSeconds() >= s.idleMinutes * 60)
     }, IDLE_POLL_MS)
 
     sleepTimer = setInterval(() => {
@@ -135,7 +146,7 @@ export function createKiosk(deps: { settings: SettingsService; broadcast: (ch: s
     return stored
   }
 
-  return { start, stop, listPhotos, pickFolder, previewScreensaver, setLaunchOnStartup, getLaunchOnStartup }
+  return { start, stop, listPhotos, pickFolder, previewScreensaver, setLaunchOnStartup, getLaunchOnStartup, reportActivity }
 }
 
 export type Kiosk = ReturnType<typeof createKiosk>

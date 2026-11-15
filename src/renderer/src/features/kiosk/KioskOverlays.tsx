@@ -5,6 +5,7 @@ import { ipcInvoke } from '../../api/client'
 import { useSettings } from '../../api/hooks'
 import { ZONE } from '../../stores/uiStore'
 import { useKioskState } from '../../stores/kioskStore'
+import { useActivityReporter } from './activityReporter'
 
 const WAKE_OVERRIDE_MS = 5 * 60 * 1000
 const SLIDE_MS = 12_000
@@ -79,6 +80,7 @@ export function KioskOverlays() {
   const [awakeOverride, setAwakeOverride] = useState(false)
   const overrideTimer = useRef<number | null>(null)
   const setCovered = useKioskState((s) => s.setCovered)
+  useActivityReporter()
 
   // let expensive tiles (camera streams) pause while a layer covers them
   const covered = (sleeping && !awakeOverride) || screensaver
