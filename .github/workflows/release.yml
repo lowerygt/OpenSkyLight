@@ -2,6 +2,7 @@ name: Release
 
 # Pushing a version tag (v0.2.0, v1.0.0, ...) builds the Windows installer and
 # publishes it as a GitHub Release. Installed apps auto-update from there.
+# A Linux job then adds the .deb to the same release (Linux kiosks don't auto-update).
 on:
   push:
     tags:
@@ -31,5 +32,44 @@ jobs:
 
       - name: Build and publish release
         run: npm run release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-linux:
+    # after the Windows job, so both don't race to create the same release
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          npm ci
+
+      - name: Typecheck and unit tests
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Build the .deb
+        run: |
+          npm run build
+          npx electron-builder --linux --publish never
+
+      - name: Smoke test the packaged app
+        run: |
+          # Ubuntu 24.04 blocks the unprivileged user namespaces Chromium's sandbox needs
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          xvfb-run -a node scripts/e2e-packaged.mjs
+
+      - name: Publish the .deb
+        run: npx electron-builder --linux --prepackaged dist/linux-unpacked --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
