@@ -52,8 +52,9 @@ which seeds demo data through the app's real IPC layer — so they stay honest.
 - **IP camera tiles (RTSP)**: add any camera's rtsp:// URL and watch it live on
   the home screen (~1s latency). The bundled ffmpeg remuxes the camera's H.264
   stream without transcoding (near-zero CPU) to a token-guarded localhost
-  WebSocket; camera URLs (which contain credentials) are DPAPI-encrypted and
-  never leave the main process. Cameras must provide an H.264 stream (set the
+  WebSocket; camera URLs (which contain credentials) are encrypted with the OS
+  keystore (DPAPI on Windows, the system keyring on Linux) and never leave the
+  main process. Cameras must provide an H.264 stream (set the
   camera substream to H.264 if tiles show "unavailable").
 
 - Week / Day / Month / Agenda (List) views, touch-first with ≥48px targets
@@ -117,7 +118,8 @@ How it works and what to know:
   editing of lists/meals/chores only — it can never reach settings, sync
   credentials, or cameras.
 - If a phone can't connect, allow OpenSkyLight through **Windows Firewall**
-  (Private networks) on the kiosk machine.
+  (Private networks) on the kiosk machine, or on Linux run
+  `sudo ufw allow 8420/tcp`.
 - Away-from-home access: run [Tailscale](https://tailscale.com) on the kiosk
   and your phone and it works from anywhere, unchanged. (Traffic on your LAN is
   plain HTTP — fine for a home network, which is the threat model here.)
@@ -161,6 +163,27 @@ test suite, and publishes the release; every kiosk picks it up automatically.
 4. The installed app runs fullscreen kiosk by default; launch with
    `OpenSkyLight.exe --windowed` if you ever need a window
 
+## Kiosk setup (Linux)
+
+Tested on Linux Mint 22 (Ubuntu 24.04 base) on an X11 session.
+
+1. `npm run dist -- --publish never`, then on the kiosk:
+   `sudo apt install ./dist/openskylight_<version>_amd64.deb`
+2. In the app: Settings → General → enable **Launch on startup** (writes
+   `~/.config/autostart/openskylight.desktop`)
+3. In the desktop settings: enable auto-login, and turn off the desktop's own
+   screensaver, screen lock, and suspend (including on lid close)
+4. Panel power-off during the sleep schedule uses `xset dpms` (package
+   `x11-xserver-utils`, usually preinstalled). On Wayland, or without `xset`,
+   the app falls back to a black screen
+5. Optional: `sudo apt install fonts-noto-color-emoji` for emoji, and
+   `sudo ufw allow 8420/tcp` if the firewall is on (for the companion app)
+6. Without a system keyring (gnome-keyring or KWallet), Google sign-ins and
+   camera URLs are stored unencrypted in `~/.config/openskylight`; Settings
+   shows a warning when that is the case
+7. The installed app runs fullscreen kiosk by default; launch with
+   `openskylight --windowed` if you ever need a window
+
 ## Development
 
 ```bash
@@ -171,11 +194,12 @@ npm run dev:companion    # companion web app with hot reload (proxies /api to a 
 npm test           # unit tests (run inside Electron's Node for the native module)
 npm run typecheck
 node scripts/e2e-smoke.mjs   # launches the built app and creates an event end-to-end
-npm run dist       # NSIS installer + portable exe (Windows)
+npm run dist       # NSIS installer + portable exe (Windows), .deb (Linux)
 ```
 
 Production builds run fullscreen kiosk by default; pass `--windowed` to opt out.
-Data lives in SQLite at `%APPDATA%/openskylight/openskylight.db`.
+Data lives in SQLite at `%APPDATA%/openskylight/openskylight.db` on Windows and
+`~/.config/openskylight/openskylight.db` on Linux.
 
 ## Architecture
 
