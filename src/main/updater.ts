@@ -29,6 +29,9 @@ export function createUpdater(deps: { broadcast: (channel: string, payload: unkn
 
   function start(): void {
     if (!app.isPackaged) return // updater is meaningless (and errors) in dev
+    // Linux .deb updates need root (dpkg via pkexec), which an unattended kiosk can't grant;
+    // update by installing the new .deb instead
+    if (process.platform === 'linux') return
 
     autoUpdater.autoDownload = true
     autoUpdater.autoInstallOnAppQuit = true
