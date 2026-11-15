@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url'
 import { DateTime } from 'luxon'
 import type { SettingsService } from '../services/settingsService'
 import { isInSleepWindow } from '@shared/sleepWindow'
+import { isLinuxAutostartEnabled, setLinuxAutostart } from './linuxAutostart'
 
 const PHOTO_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'])
 const IDLE_POLL_MS = 5_000
@@ -124,10 +125,17 @@ export function createKiosk(deps: { settings: SettingsService; broadcast: (ch: s
 
   function setLaunchOnStartup(enabled: boolean): void {
     if (!app.isPackaged) return // pointless (and confusing) for dev runs
+    if (process.platform === 'linux') return setLinuxAutostart(enabled, process.execPath)
     app.setLoginItemSettings({ openAtLogin: enabled, path: process.execPath })
   }
 
-  return { start, stop, listPhotos, pickFolder, previewScreensaver, setLaunchOnStartup }
+  /** On Linux the autostart file is the source of truth; elsewhere the stored setting is. */
+  function getLaunchOnStartup(stored: boolean): boolean {
+    if (process.platform === 'linux' && app.isPackaged) return isLinuxAutostartEnabled()
+    return stored
+  }
+
+  return { start, stop, listPhotos, pickFolder, previewScreensaver, setLaunchOnStartup, getLaunchOnStartup }
 }
 
 export type Kiosk = ReturnType<typeof createKiosk>

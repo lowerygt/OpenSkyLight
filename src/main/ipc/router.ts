@@ -183,7 +183,10 @@ export function buildChannelTable(services: Services): ChannelTable {
   }))
   handle('app:installUpdate', null, () => services.updater.quitAndInstall())
 
-  handle('settings:getAll', null, () => services.settings.getAll())
+  handle('settings:getAll', null, () => {
+    const all = services.settings.getAll()
+    return { ...all, launchOnStartup: services.kiosk.getLaunchOnStartup(all.launchOnStartup) }
+  })
   handle('settings:set', s.settingsPatchSchema, (req) => {
     const result = services.settings.set(req.patch)
     if (req.patch.launchOnStartup !== undefined) services.kiosk.setLaunchOnStartup(req.patch.launchOnStartup)
