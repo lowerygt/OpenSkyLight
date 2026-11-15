@@ -214,6 +214,7 @@ export function buildChannelTable(services: Services): ChannelTable {
 
   handle('google:getStatus', null, () => ({
     configured: services.googleAuth.isConfigured(),
+    notice: services.googleAuth.getNotice(),
     accounts: services.googleAuth.listAccounts()
   }))
   handle('google:setCredentials', s.googleCredentialsSchema, (req) =>

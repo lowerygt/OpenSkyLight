@@ -59,7 +59,12 @@ export type IpcContract = {
 
   'google:getStatus': {
     req: void
-    res: { configured: boolean; accounts: { id: string; email: string; error: string | null }[] }
+    res: {
+      configured: boolean
+      /** Why the user must re-enter credentials (e.g. a secret could not be decrypted). */
+      notice: string | null
+      accounts: { id: string; email: string; error: string | null }[]
+    }
   }
   'google:setCredentials': { req: { clientId: string; clientSecret: string }; res: void }
   'google:connect': { req: void; res: { email: string } }
@@ -112,7 +117,7 @@ export type IpcContract = {
   'rewards:redemptions': { req: void; res: RedemptionDto[] }
   'rewards:grant': { req: { redemptionId: string }; res: void }
 
-  'camera:list': { req: void; res: { id: string; name: string }[] }
+  'camera:list': { req: void; res: { id: string; name: string; needsUrl?: boolean }[] }
   'camera:add': { req: { name: string; url: string }; res: { id: string; name: string } }
   'camera:remove': { req: { cameraId: string }; res: void }
   /** Start (or join) the stream; returns the playable URL and a per-viewer session id. */

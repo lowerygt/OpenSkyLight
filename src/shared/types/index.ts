@@ -175,6 +175,8 @@ export interface HomeTileConfig {
 export interface CameraDto {
   id: string
   name: string
+  /** The stored URL could not be decrypted and was cleared; the camera must be re-added. */
+  needsUrl?: boolean
 }
 
 export interface HomeTile {

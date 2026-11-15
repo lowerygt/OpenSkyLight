@@ -279,6 +279,7 @@ function GoogleSection() {
       <FieldLabel>Google Calendar</FieldLabel>
       {!status.configured ? (
         <div className="flex flex-col gap-3 rounded-2xl bg-paper-deep/50 p-4">
+          {status.notice && <p className="text-base font-bold text-ember-deep">{status.notice}</p>}
           <p className="text-base font-semibold text-ink-soft">
             Two-way sync uses your own (free) Google Cloud project. Create a{' '}
             <span className="font-extrabold">Desktop app</span> OAuth client in the Google Cloud console, enable the
