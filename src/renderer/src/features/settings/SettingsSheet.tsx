@@ -3,6 +3,7 @@ import type { CalendarDto, ChoreDto, PersonDto, PersonRole, RecurrenceInput, Rew
 import { PERSON_COLORS } from '@shared/types'
 import { describeRecurrence } from '@shared/recurrence/build'
 import {
+  useAppInfo,
   useAuthMutations,
   useAuthStatus,
   useCalendarMutations,
@@ -244,6 +245,18 @@ function SyncStatusRow() {
   )
 }
 
+/** Linux without a keyring: the user chose to allow unencrypted secrets, with this warning. */
+function PlaintextSecretsNotice() {
+  const { data: info } = useAppInfo()
+  if (!info?.plaintextSecrets) return null
+  return (
+    <p className="rounded-2xl border-2 border-ember-soft bg-paper-deep/50 px-4 py-3 text-sm font-bold text-ember-deep">
+      No system keyring found, so Google sign-ins and camera passwords are saved unencrypted on this device. Anyone
+      with access to this computer's files could read them.
+    </p>
+  )
+}
+
 function GoogleSection() {
   const { data: status } = useGoogleStatus()
   const google = useGoogleMutations()
@@ -418,6 +431,7 @@ function CalendarsTab() {
   return (
     <div className="flex flex-col gap-6">
       <SyncStatusRow />
+      <PlaintextSecretsNotice />
       <GoogleSection />
       <IcsSection />
       <div>

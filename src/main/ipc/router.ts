@@ -20,6 +20,7 @@ import type { RewardsService } from '../services/rewardsService'
 import type { ListsService } from '../services/listsService'
 import type { MealsService } from '../services/mealsService'
 import type { Kiosk } from '../kiosk/kiosk'
+import { secretsStoredAsPlainText } from '../secretStorage'
 import type { Updater } from '../updater'
 import type { RssService } from '../services/rssService'
 import type { CameraService } from '../services/cameraService'
@@ -179,7 +180,8 @@ export function buildChannelTable(services: Services): ChannelTable {
   handle('app:getInfo', null, () => ({
     version: app.getVersion(),
     platform: process.platform,
-    zone: DateTime.local().zoneName ?? 'UTC'
+    zone: DateTime.local().zoneName ?? 'UTC',
+    plaintextSecrets: secretsStoredAsPlainText()
   }))
   handle('app:installUpdate', null, () => services.updater.quitAndInstall())
 
