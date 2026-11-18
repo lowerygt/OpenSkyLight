@@ -1,0 +1,104 @@
+name: CI
+
+# Runs on every push to main and every PR, and is called by release.yml so a
+# tag can't publish (and auto-install on family kiosks at 03:30) unless the
+# full check passes on the exact commit being released.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: End-to-end tests (no internet needed)
+        run: npm run e2e:offline
+
+      - name: Package (unpacked) and smoke-test the packaged app
+        run: |
+          npx electron-builder --win --dir --publish never
+          npm run e2e:packaged
+
+      - name: Production dependency audit (informational)
+        continue-on-error: true
+        run: npm audit --omit=dev
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shots-windows
+          path: shots/
+          if-no-files-found: ignore
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          npm ci
+
+      - name: Typecheck and unit tests
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Build and package the .deb tree
+        run: |
+          npm run build
+          npx electron-builder --linux --dir --publish never
+
+      - name: Smoke test the packaged app
+        run: |
+          # Ubuntu 24.04 blocks the unprivileged user namespaces Chromium's sandbox needs
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          xvfb-run -a npm run e2e:packaged
+
+      - name: End-to-end tests (non-blocking until first verified green on Linux)
+        continue-on-error: true
+        run: xvfb-run -a npm run e2e:offline
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shots-linux
+          path: shots/
+          if-no-files-found: ignore

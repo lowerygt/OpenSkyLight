@@ -1,6 +1,7 @@
 // End-to-end smoke test: launch the built app with an isolated data dir,
 // create an event through the real UI, and verify it appears in the week grid.
 import { _electron as electron } from 'playwright-core'
+import { waitForBoot } from './e2e-lib.mjs'
 import { createRequire } from 'node:module'
 import { mkdtempSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -19,7 +20,7 @@ const app = await electron.launch({
 
 try {
   const page = await app.firstWindow()
-  await page.waitForSelector('text=Week', { timeout: 15000 })
+  await waitForBoot(page)
   // the app boots to Home; event creation lives on the calendar views
   await page.getByRole('button', { name: 'Week', exact: true }).click()
 

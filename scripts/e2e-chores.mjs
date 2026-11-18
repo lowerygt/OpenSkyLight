@@ -2,6 +2,7 @@
 // add a child, create a chore and a reward, check the chore off on the board,
 // redeem the reward, and grant it as a parent.
 import { _electron as electron } from 'playwright-core'
+import { waitForBoot } from './e2e-lib.mjs'
 import { createRequire } from 'node:module'
 import { mkdtempSync, rmSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -20,7 +21,7 @@ const app = await electron.launch({
 
 try {
   const page = await app.firstWindow()
-  await page.waitForSelector('text=Week', { timeout: 15000 })
+  await waitForBoot(page)
 
   // 1. add a child
   await page.getByLabel('Settings').click()

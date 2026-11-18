@@ -3,6 +3,9 @@ name: Release
 # Pushing a version tag (v0.2.0, v1.0.0, ...) builds the Windows installer and
 # publishes it as a GitHub Release. Installed apps auto-update from there.
 # A Linux job then adds the .deb to the same release (Linux kiosks don't auto-update).
+#
+# Tags containing a '-' (v0.9.1-beta.1) publish as PRERELEASES: stable kiosks
+# ignore them, so a risky build can soak on one canary kiosk first.
 on:
   push:
     tags:
@@ -12,7 +15,12 @@ permissions:
   contents: write
 
 jobs:
+  ci:
+    # the full CI (incl. e2e + packaged smoke) must pass on the tagged commit
+    uses: ./.github/workflows/ci.yml
+
   release:
+    needs: ci
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,16 +30,26 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Tag must match package.json version
+        shell: bash
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if [ "v$v" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version v$v"
+            exit 1
+          fi
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck and unit tests
-        run: |
-          npm run typecheck
-          npm test
-
       - name: Build and publish release
-        run: npm run release
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            npm run release -- -c.publish.releaseType=prerelease
+          else
+            npm run release
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -70,6 +88,11 @@ jobs:
           xvfb-run -a node scripts/e2e-packaged.mjs
 
       - name: Publish the .deb
-        run: npx electron-builder --linux --prepackaged dist/linux-unpacked --publish always
+        run: |
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            npx electron-builder --linux --prepackaged dist/linux-unpacked --publish always -c.publish.releaseType=prerelease
+          else
+            npx electron-builder --linux --prepackaged dist/linux-unpacked --publish always
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

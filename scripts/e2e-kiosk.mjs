@@ -2,6 +2,7 @@
 // real decoded image) and sleep mode (window covering now -> black overlay,
 // tap to wake).
 import { _electron as electron } from 'playwright-core'
+import { waitForBoot } from './e2e-lib.mjs'
 import { createRequire } from 'node:module'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -29,7 +30,7 @@ const app = await electron.launch({
 
 try {
   const page = await app.firstWindow()
-  await page.waitForSelector('text=Week', { timeout: 15000 })
+  await waitForBoot(page)
 
   // --- screensaver ---
   await page.evaluate(

@@ -1,6 +1,7 @@
 // E2E: lists (create, add item, check off) and meal planning (set dinner,
 // see it on the week grid) through the real UI.
 import { _electron as electron } from 'playwright-core'
+import { waitForBoot } from './e2e-lib.mjs'
 import { createRequire } from 'node:module'
 import { mkdtempSync, rmSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -19,7 +20,7 @@ const app = await electron.launch({
 
 try {
   const page = await app.firstWindow()
-  await page.waitForSelector('text=Week', { timeout: 15000 })
+  await waitForBoot(page)
 
   // Lists: create a grocery list, add an item, check it off
   await page.getByRole('button', { name: 'Lists', exact: true }).click()

@@ -1,6 +1,7 @@
 // E2E: subscribe to a live ICS feed through the settings UI and verify the
 // event shows up on the calendar.
 import { _electron as electron } from 'playwright-core'
+import { waitForBoot } from './e2e-lib.mjs'
 import { createRequire } from 'node:module'
 import { createServer } from 'node:http'
 import { mkdtempSync, rmSync, mkdirSync } from 'node:fs'
@@ -42,7 +43,7 @@ const app = await electron.launch({
 
 try {
   const page = await app.firstWindow()
-  await page.waitForSelector('text=Week', { timeout: 15000 })
+  await waitForBoot(page)
 
   await page.getByLabel('Settings').click()
   await page.getByRole('button', { name: 'Calendars' }).click()

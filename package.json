@@ -16,6 +16,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "node scripts/run-vitest.mjs run",
     "test:watch": "node scripts/run-vitest.mjs",
+    "e2e": "node scripts/e2e-all.mjs",
+    "e2e:offline": "node scripts/e2e-all.mjs --offline",
+    "e2e:packaged": "node scripts/e2e-packaged.mjs",
     "postinstall": "electron-builder install-app-deps",
     "dist": "npm run build && electron-builder",
     "release": "npm run build && electron-builder --publish always"

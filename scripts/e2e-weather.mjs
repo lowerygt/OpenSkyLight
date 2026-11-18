@@ -1,6 +1,7 @@
 // E2E: set a weather location via city search (live Open-Meteo APIs) and
 // verify the forecast appears in the header.
 import { _electron as electron } from 'playwright-core'
+import { waitForBoot } from './e2e-lib.mjs'
 import { createRequire } from 'node:module'
 import { mkdtempSync, rmSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -19,7 +20,7 @@ const app = await electron.launch({
 
 try {
   const page = await app.firstWindow()
-  await page.waitForSelector('text=Week', { timeout: 15000 })
+  await waitForBoot(page)
 
   await page.getByLabel('Settings').click()
   await page.getByRole('button', { name: 'General' }).click()

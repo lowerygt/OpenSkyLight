@@ -1,6 +1,7 @@
 // E2E: set a parental PIN through the UI, verify settings lock behind it,
 // reject a wrong PIN, and accept the right one.
 import { _electron as electron } from 'playwright-core'
+import { waitForBoot } from './e2e-lib.mjs'
 import { createRequire } from 'node:module'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -18,7 +19,7 @@ const app = await electron.launch({
 
 try {
   const page = await app.firstWindow()
-  await page.waitForSelector('text=Week', { timeout: 15000 })
+  await waitForBoot(page)
 
   const pad = () => page.locator('.animate-pop').last()
   const tap = async (key) => pad().getByRole('button', { name: key, exact: true }).click()
