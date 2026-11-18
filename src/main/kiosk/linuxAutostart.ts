@@ -1,14 +1,15 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { posix } from 'node:path'
 
 /**
  * Linux launch-on-startup. Electron's setLoginItemSettings is a no-op on Linux,
  * so we write an XDG autostart entry instead (honoured by GNOME, Cinnamon, KDE, XFCE…).
+ * XDG paths are POSIX by definition, so join with posix even when tests run on Windows.
  */
 export function autostartPath(): string {
-  const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), '.config')
-  return join(configHome, 'autostart', 'openskylight.desktop')
+  const configHome = process.env.XDG_CONFIG_HOME || posix.join(homedir(), '.config')
+  return posix.join(configHome, 'autostart', 'openskylight.desktop')
 }
 
 function quoteExec(arg: string): string {
@@ -32,7 +33,7 @@ export function autostartEntry(execPath: string, args: string[] = []): string {
 export function setLinuxAutostart(enabled: boolean, execPath: string, args: string[] = []): void {
   const file = autostartPath()
   if (enabled) {
-    mkdirSync(join(file, '..'), { recursive: true })
+    mkdirSync(posix.dirname(file), { recursive: true })
     writeFileSync(file, autostartEntry(execPath, args), 'utf8')
   } else {
     rmSync(file, { force: true })
