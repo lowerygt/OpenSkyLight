@@ -16,6 +16,10 @@ const SCOPES = ['https://www.googleapis.com/auth/calendar', 'openid', 'email']
 const KEY_CLIENT_ID = 'google.clientId'
 const KEY_CLIENT_SECRET = 'google.clientSecretEnc'
 const CONNECT_TIMEOUT_MS = 5 * 60 * 1000
+/** Set when a stored secret could not be decrypted (keyring changed, profile moved). */
+const KEY_SECRET_NOTICE = 'google.secretNotice'
+const SECRET_LOST_MSG = 'The saved Google client secret could not be read (keyring changed or profile moved). Enter it again.'
+const TOKEN_LOST_MSG = 'Saved Google sign-in could not be read (keyring changed or profile moved). Reconnect this account.'
 
 function encryptSecret(plain: string): Buffer {
   if (safeStorage.isEncryptionAvailable()) return safeStorage.encryptString(plain)
@@ -41,12 +45,21 @@ export function createGoogleAuth(db: AppDb, settings: SettingsService) {
     if (!clientId || !secretB64) return null
     try {
       return { clientId, clientSecret: decryptSecret(Buffer.from(secretB64, 'base64')) }
-    } catch {
+    } catch (err) {
+      // unreadable: drop it and ask for re-entry instead of failing forever
+      console.warn('[google] client secret could not be decrypted; clearing it:', (err as Error).message)
+      settings.deleteRaw(KEY_CLIENT_SECRET)
+      settings.setRaw(KEY_SECRET_NOTICE, SECRET_LOST_MSG)
       return null
     }
   }
 
+  function getNotice(): string | null {
+    return settings.getRaw(KEY_SECRET_NOTICE)
+  }
+
   function setCredentials(clientId: string, clientSecret: string): void {
+    settings.deleteRaw(KEY_SECRET_NOTICE)
     settings.setRaw(KEY_CLIENT_ID, clientId.trim())
     settings.setRaw(KEY_CLIENT_SECRET, encryptSecret(clientSecret.trim()).toString('base64'))
   }
@@ -178,9 +191,21 @@ export function createGoogleAuth(db: AppDb, settings: SettingsService) {
     const creds = getCredentials()
     if (!creds) throw new AppError('NOT_CONFIGURED', 'Google credentials missing')
     const [account] = db.select().from(googleAccounts).where(eq(googleAccounts.id, accountId)).all()
-    if (!account?.refreshTokenEnc) throw notFound('Google account')
+    if (!account) throw notFound('Google account')
+    if (!account.refreshTokenEnc) throw new AppError('REAUTH_REQUIRED', account.lastRefreshError ?? TOKEN_LOST_MSG)
+    let refreshToken: string
+    try {
+      refreshToken = decryptSecret(Buffer.from(account.refreshTokenEnc))
+    } catch (err) {
+      console.warn('[google] refresh token could not be decrypted; clearing it:', (err as Error).message)
+      db.update(googleAccounts)
+        .set({ refreshTokenEnc: null, lastRefreshError: TOKEN_LOST_MSG })
+        .where(eq(googleAccounts.id, accountId))
+        .run()
+      throw new AppError('REAUTH_REQUIRED', TOKEN_LOST_MSG)
+    }
     const client = new OAuth2Client({ clientId: creds.clientId, clientSecret: creds.clientSecret })
-    client.setCredentials({ refresh_token: decryptSecret(Buffer.from(account.refreshTokenEnc)) })
+    client.setCredentials({ refresh_token: refreshToken })
     return client
   }
 
@@ -206,7 +231,7 @@ export function createGoogleAuth(db: AppDb, settings: SettingsService) {
     })
   }
 
-  return { isConfigured, setCredentials, connect, listAccounts, getAuthedClient, markAuthError, disconnect }
+  return { isConfigured, getNotice, setCredentials, connect, listAccounts, getAuthedClient, markAuthError, disconnect }
 }
 
 export type GoogleAuth = ReturnType<typeof createGoogleAuth>

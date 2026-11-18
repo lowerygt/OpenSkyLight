@@ -508,7 +508,7 @@ export function CameraTile({ tile }: TileProps) {
   const camera = (cameras ?? []).find((c) => c.id === cameraId)
   // depend on stable scalars, not the array entry — unrelated cache refreshes
   // must not tear down a live stream
-  const cameraFound = camera !== undefined
+  const cameraFound = camera !== undefined && !camera.needsUrl
   const covered = useKioskState((s) => s.covered)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [status, setStatus] = useState<'connecting' | 'live' | 'error'>('connecting')
@@ -582,6 +582,7 @@ export function CameraTile({ tile }: TileProps) {
 
   if (!cameraId || camerasLoading) return <Placeholder>Connecting…</Placeholder>
   if (!camera) return <Placeholder>Camera not found — re-add this tile</Placeholder>
+  if (camera.needsUrl) return <Placeholder>Saved camera address can't be read — remove the camera and add it again</Placeholder>
 
   return (
     <div className="relative -m-4 h-[calc(100%+2rem)] overflow-hidden bg-black/90">

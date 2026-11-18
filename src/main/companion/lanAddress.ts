@@ -2,7 +2,9 @@ import os from 'node:os'
 
 /** Pure (interfaces injectable) so the ranking is unit-testable on fixtures. */
 
-const VIRTUAL_NAME = /(vEthernet|WSL|Hyper-V|VirtualBox|VMware|vmnet|Tailscale|ZeroTier|Loopback|docker|veth)/i
+// Windows adapter names, then Linux ones (docker/libvirt bridges, VPN tunnels, WireGuard, ZeroTier)
+const VIRTUAL_NAME =
+  /(vEthernet|WSL|Hyper-V|VirtualBox|VMware|vmnet|Tailscale|ZeroTier|Loopback|docker|veth|^br-|^virbr|^tun|^wg|^zt)/i
 
 function isRfc1918(ip: string): boolean {
   return (

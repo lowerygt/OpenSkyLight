@@ -1,4 +1,4 @@
-// Boots the PACKAGED app (dist/win-unpacked) to verify asar paths and the
+// Boots the PACKAGED app (dist/win-unpacked, or dist/linux-unpacked on Linux) to verify asar paths and the
 // rebuilt native module work outside the dev harness.
 import { _electron as electron } from 'playwright-core'
 import { mkdtempSync, rmSync, mkdirSync } from 'node:fs'
@@ -9,7 +9,11 @@ const userData = mkdtempSync(join(tmpdir(), 'osl-packaged-'))
 mkdirSync('shots', { recursive: true })
 
 const app = await electron.launch({
-  executablePath: resolve('dist/win-unpacked/OpenSkyLight.exe'),
+  executablePath: resolve(
+    process.platform === 'linux'
+      ? 'dist/linux-unpacked/openskylight'
+      : 'dist/win-unpacked/OpenSkyLight.exe'
+  ),
   args: ['--windowed'],
   env: { ...process.env, OSL_USER_DATA: userData }
 })

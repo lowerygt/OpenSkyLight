@@ -5,9 +5,11 @@ import { ipcInvoke } from '../../api/client'
 import { useSettings } from '../../api/hooks'
 import { ZONE } from '../../stores/uiStore'
 import { useKioskState } from '../../stores/kioskStore'
+import { useActivityReporter } from './activityReporter'
 
 const WAKE_OVERRIDE_MS = 5 * 60 * 1000
 const SLIDE_MS = 12_000
+const WAKE_SHIELD_MS = 500
 
 function useClock(): DateTime {
   const [now, setNow] = useState(() => DateTime.now().setZone(ZONE))
@@ -64,7 +66,15 @@ function ScreensaverOverlay({ onDismiss }: { onDismiss: () => void }) {
 function SleepOverlay({ onWake }: { onWake: () => void }) {
   const now = useClock()
   return (
-    <div className="fixed inset-0 z-[90] cursor-none bg-black" onPointerDown={onWake}>
+    <div
+      className="fixed inset-0 z-[90] cursor-none bg-black"
+      onPointerDown={(e) => {
+        // keep the overlay up briefly so the wake tap (and any late emulated click)
+        // can't land on the UI underneath
+        e.preventDefault()
+        window.setTimeout(onWake, WAKE_SHIELD_MS)
+      }}
+    >
       <div className="absolute right-8 bottom-6 text-xl font-semibold text-white/15 select-none">
         {now.toFormat('h:mm a').toLowerCase()}
       </div>
@@ -79,6 +89,7 @@ export function KioskOverlays() {
   const [awakeOverride, setAwakeOverride] = useState(false)
   const overrideTimer = useRef<number | null>(null)
   const setCovered = useKioskState((s) => s.setCovered)
+  useActivityReporter()
 
   // let expensive tiles (camera streams) pause while a layer covers them
   const covered = (sleeping && !awakeOverride) || screensaver

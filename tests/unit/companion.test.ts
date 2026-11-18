@@ -66,6 +66,28 @@ describe('pickLanAddresses', () => {
     family: 'IPv4' | 'IPv6' = 'IPv4'
   ): os.NetworkInterfaceInfo => ({ address, internal, family, netmask: '', mac: '', cidr: null }) as os.NetworkInterfaceInfo
 
+  it('ranks Linux bridges and tunnels below the real Wi-Fi/Ethernet NIC', () => {
+    const result = pickLanAddresses({
+      lo: [iface('127.0.0.1', true)],
+      'br-3f2a9c1d': [iface('172.18.0.1')],
+      docker0: [iface('172.17.0.1')],
+      virbr0: [iface('192.168.122.1')],
+      tun0: [iface('10.8.0.2')],
+      wg0: [iface('10.66.0.2')],
+      ztabcd1234: [iface('10.147.17.5')],
+      wlp3s0: [iface('192.168.1.102')]
+    })
+    expect(result[0]).toBe('192.168.1.102')
+    expect(result).toHaveLength(7)
+  })
+
+  it('treats Linux NIC names (enp*, eth*, wlan*) as real adapters', () => {
+    for (const name of ['enp0s25', 'eth0', 'wlan0', 'eno1']) {
+      const result = pickLanAddresses({ virbr0: [iface('192.168.122.1')], [name]: [iface('192.168.1.50')] })
+      expect(result[0]).toBe('192.168.1.50')
+    }
+  })
+
   it('prefers real-NIC private addresses over virtual adapters and skips junk', () => {
     const result = pickLanAddresses({
       'Loopback Pseudo-Interface 1': [iface('127.0.0.1', true)],

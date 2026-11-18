@@ -3,6 +3,7 @@ import type { CalendarDto, ChoreDto, PersonDto, PersonRole, RecurrenceInput, Rew
 import { PERSON_COLORS } from '@shared/types'
 import { describeRecurrence } from '@shared/recurrence/build'
 import {
+  useAppInfo,
   useAuthMutations,
   useAuthStatus,
   useCalendarMutations,
@@ -244,6 +245,18 @@ function SyncStatusRow() {
   )
 }
 
+/** Linux without a keyring: the user chose to allow unencrypted secrets, with this warning. */
+function PlaintextSecretsNotice() {
+  const { data: info } = useAppInfo()
+  if (!info?.plaintextSecrets) return null
+  return (
+    <p className="rounded-2xl border-2 border-ember-soft bg-paper-deep/50 px-4 py-3 text-sm font-bold text-ember-deep">
+      No system keyring found, so Google sign-ins and camera passwords are saved unencrypted on this device. Anyone
+      with access to this computer's files could read them.
+    </p>
+  )
+}
+
 function GoogleSection() {
   const { data: status } = useGoogleStatus()
   const google = useGoogleMutations()
@@ -266,6 +279,7 @@ function GoogleSection() {
       <FieldLabel>Google Calendar</FieldLabel>
       {!status.configured ? (
         <div className="flex flex-col gap-3 rounded-2xl bg-paper-deep/50 p-4">
+          {status.notice && <p className="text-base font-bold text-ember-deep">{status.notice}</p>}
           <p className="text-base font-semibold text-ink-soft">
             Two-way sync uses your own (free) Google Cloud project. Create a{' '}
             <span className="font-extrabold">Desktop app</span> OAuth client in the Google Cloud console, enable the
@@ -418,6 +432,7 @@ function CalendarsTab() {
   return (
     <div className="flex flex-col gap-6">
       <SyncStatusRow />
+      <PlaintextSecretsNotice />
       <GoogleSection />
       <IcsSection />
       <div>
@@ -943,6 +958,7 @@ function CompanionSection() {
   const mutation = useSettingsMutation()
   const { data: status } = useCompanionStatus()
   const companionMutations = useCompanionMutations()
+  const { data: appInfo } = useAppInfo()
   const [qr, setQr] = useState<{ url: string; dataUrl: string } | null>(null)
   const [portDraft, setPortDraft] = useState<string | null>(null)
   if (!settings) return null
@@ -1013,7 +1029,14 @@ function CompanionSection() {
               )}
             </div>
             <p className="text-sm font-semibold text-ink-faint">
-              If phones can't connect, allow OpenSkyLight through Windows Firewall (Private networks).
+              {appInfo?.platform === 'linux' ? (
+                <>
+                  If phones can't connect, open the port in the firewall:{' '}
+                  <span className="font-mono font-bold">sudo ufw allow {companion.port}/tcp</span>
+                </>
+              ) : (
+                "If phones can't connect, allow OpenSkyLight through Windows Firewall (Private networks)."
+              )}
             </p>
           </>
         )}

@@ -17,6 +17,27 @@ win:
   target:
     - nsis
     - portable
+linux:
+  target:
+    - target: deb
+      arch: x64
+  category: Office
+  executableName: openskylight
+  icon: icon.png
+  maintainer: OpenSkyLight <noreply@users.noreply.github.com>
+  synopsis: Family calendar display
+  description: Open-source standalone family calendar display.
+deb:
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+    - libsecret-1-0
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

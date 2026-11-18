@@ -31,7 +31,11 @@ import type {
  * channel and the renderer gets a fully typed `ipcInvoke`.
  */
 export type IpcContract = {
-  'app:getInfo': { req: void; res: { version: string; platform: string; zone: string } }
+  'app:getInfo': {
+    req: void
+    /** plaintextSecrets: Linux without a keyring — secrets are stored unencrypted. */
+    res: { version: string; platform: string; zone: string; plaintextSecrets: boolean }
+  }
   'app:installUpdate': { req: void; res: void }
 
   'settings:getAll': { req: void; res: AppSettings }
@@ -55,7 +59,12 @@ export type IpcContract = {
 
   'google:getStatus': {
     req: void
-    res: { configured: boolean; accounts: { id: string; email: string; error: string | null }[] }
+    res: {
+      configured: boolean
+      /** Why the user must re-enter credentials (e.g. a secret could not be decrypted). */
+      notice: string | null
+      accounts: { id: string; email: string; error: string | null }[]
+    }
   }
   'google:setCredentials': { req: { clientId: string; clientSecret: string }; res: void }
   'google:connect': { req: void; res: { email: string } }
@@ -108,7 +117,7 @@ export type IpcContract = {
   'rewards:redemptions': { req: void; res: RedemptionDto[] }
   'rewards:grant': { req: { redemptionId: string }; res: void }
 
-  'camera:list': { req: void; res: { id: string; name: string }[] }
+  'camera:list': { req: void; res: { id: string; name: string; needsUrl?: boolean }[] }
   'camera:add': { req: { name: string; url: string }; res: { id: string; name: string } }
   'camera:remove': { req: { cameraId: string }; res: void }
   /** Start (or join) the stream; returns the playable URL and a per-viewer session id. */
@@ -162,6 +171,8 @@ export type IpcContract = {
   'screensaver:pickFolder': { req: void; res: { folder: string | null } }
   'screensaver:listPhotos': { req: void; res: string[] }
   'kiosk:previewScreensaver': { req: void; res: void }
+  /** Renderer-reported user activity (throttled); drives idle detection on Linux. */
+  'kiosk:activity': { req: void; res: void }
 
   'companion:getStatus': {
     req: void

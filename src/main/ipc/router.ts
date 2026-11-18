@@ -20,6 +20,7 @@ import type { RewardsService } from '../services/rewardsService'
 import type { ListsService } from '../services/listsService'
 import type { MealsService } from '../services/mealsService'
 import type { Kiosk } from '../kiosk/kiosk'
+import { secretsStoredAsPlainText } from '../secretStorage'
 import type { Updater } from '../updater'
 import type { RssService } from '../services/rssService'
 import type { CameraService } from '../services/cameraService'
@@ -179,11 +180,15 @@ export function buildChannelTable(services: Services): ChannelTable {
   handle('app:getInfo', null, () => ({
     version: app.getVersion(),
     platform: process.platform,
-    zone: DateTime.local().zoneName ?? 'UTC'
+    zone: DateTime.local().zoneName ?? 'UTC',
+    plaintextSecrets: secretsStoredAsPlainText()
   }))
   handle('app:installUpdate', null, () => services.updater.quitAndInstall())
 
-  handle('settings:getAll', null, () => services.settings.getAll())
+  handle('settings:getAll', null, () => {
+    const all = services.settings.getAll()
+    return { ...all, launchOnStartup: services.kiosk.getLaunchOnStartup(all.launchOnStartup) }
+  })
   handle('settings:set', s.settingsPatchSchema, (req) => {
     const result = services.settings.set(req.patch)
     if (req.patch.launchOnStartup !== undefined) services.kiosk.setLaunchOnStartup(req.patch.launchOnStartup)
@@ -209,6 +214,7 @@ export function buildChannelTable(services: Services): ChannelTable {
 
   handle('google:getStatus', null, () => ({
     configured: services.googleAuth.isConfigured(),
+    notice: services.googleAuth.getNotice(),
     accounts: services.googleAuth.listAccounts()
   }))
   handle('google:setCredentials', s.googleCredentialsSchema, (req) =>
@@ -290,6 +296,7 @@ export function buildChannelTable(services: Services): ChannelTable {
   handle('screensaver:pickFolder', null, () => services.kiosk.pickFolder())
   handle('screensaver:listPhotos', null, () => services.kiosk.listPhotos())
   handle('kiosk:previewScreensaver', null, () => services.kiosk.previewScreensaver())
+  handle('kiosk:activity', null, () => services.kiosk.reportActivity())
 
   handle('companion:getStatus', null, () => services.companion.getStatus())
   handle('companion:issueToken', null, () => services.companion.issueToken())

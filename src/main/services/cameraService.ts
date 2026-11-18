@@ -14,6 +14,7 @@ const MAX_CLIENT_BUFFER = 8 * 1024 * 1024 // drop clients that fall this far beh
 /** A stream with no connected viewers dies after this grace period — covers
  * renderer reloads/crashes where effect cleanups (and camera:stop) never run. */
 const NO_CLIENTS_GRACE_MS = 30_000
+const URL_LOST_MSG = "This camera's saved address could not be read (keyring changed or profile moved). Remove the camera and add it again."
 
 /**
  * RTSP camera streaming. ffmpeg pulls the camera feed and REMUXES it (H.264
@@ -84,8 +85,20 @@ export function createCameraService(settings: SettingsService) {
     settings.setRaw(KEY_CAMERAS, JSON.stringify(cameras))
   }
 
+  /** Clears URLs that no longer decrypt so the UI can ask for re-entry instead of retrying forever. */
+  function readableUrl(camera: StoredCamera): string | null {
+    if (!camera.urlEnc) return null
+    try {
+      return decryptUrl(camera.urlEnc)
+    } catch (err) {
+      console.warn(`[camera] URL for "${camera.name}" could not be decrypted; clearing it:`, (err as Error).message)
+      saveCameras(loadCameras().map((c) => (c.id === camera.id ? { ...c, urlEnc: '' } : c)))
+      return null
+    }
+  }
+
   function list(): CameraDto[] {
-    return loadCameras().map((c) => ({ id: c.id, name: c.name }))
+    return loadCameras().map((c) => ({ id: c.id, name: c.name, needsUrl: readableUrl(c) === null }))
   }
 
   function add(name: string, url: string): CameraDto {
@@ -228,7 +241,9 @@ export function createCameraService(settings: SettingsService) {
     const port = await ensureServer()
     let stream = streams.get(cameraId)
     if (!stream) {
-      stream = spawnStream(cameraId, decryptUrl(camera.urlEnc))
+      const url = readableUrl(camera)
+      if (url === null) throw new AppError('CAMERA_URL_UNREADABLE', URL_LOST_MSG)
+      stream = spawnStream(cameraId, url)
     }
     const sessionId = uuidv7()
     stream.sessions.add(sessionId)
